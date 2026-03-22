@@ -6,14 +6,13 @@
 
 | Component | Part | Qty | ~Cost | Notes |
 |---|---|---|---|---|
-| MCU + LoRa | Heltec LoRa 32 V3 | 1 | $25 | ESP32-S3, 915MHz, built-in OLED |
-| GPS | SparkFun GPS-15005 (u-blox NEO-M8N) | 1 | $45 | 10Hz, UART, SMA connector |
-| GPS antenna | Active patch antenna (SMA) | 1 | $10 | Place on roof/dash with sky view |
+| MCU + LoRa + GNSS | Heltec Wireless Tracker (HTIT-Tracker) | 1 | $35 | ESP32-S3, SX1262, UC6580 GNSS, TFT, WiFi/BLE all-in-one |
+| GNSS antenna | Active patch antenna (IPEX/SMA) | 1 | $8 | Wireless Tracker has IPEX connector; use SMA adapter if needed |
 | Battery | 3.7V LiPo 2000mAh | 1 | $8 | Or wire to car 12V via buck converter |
 | Charger | TP4056 USB-C module | 1 | $2 | If using LiPo |
 | Enclosure | IP65 ABS project box | 1 | $8 | ~100x68x50mm |
 
-**Total: ~$100**
+**Total: ~$60**
 
 ### Base Station
 
@@ -31,16 +30,18 @@
 
 ## Car Unit Wiring
 
+The Heltec Wireless Tracker has GNSS (UC6580) built-in — no external GPS wiring needed.
+The GNSS module is powered via GPIO3 (set HIGH in firmware). Connect an active GNSS antenna
+to the IPEX connector on the board.
+
 ```
-Heltec LoRa 32 V3 (ESP32-S3)
-      │
-      ├── 3.3V ──── GPS VCC
-      ├── GND  ──── GPS GND
-      ├── GPIO 45 (RX1) ─── GPS TX
-      └── GPIO 46 (TX1) ─── GPS RX
+Heltec Wireless Tracker — internal connections (no wiring required)
+  GPIO 3  → UC6580 VCC (power enable)
+  GPIO 33 ← UC6580 TX  (GNSS data to ESP32)
+  GPIO 34 → UC6580 RX  (ESP32 to GNSS, for config commands)
 ```
 
-The Heltec V3 has two UART ports. UART1 (Serial1) is used for GPS to keep the USB serial port (Serial0) free for debugging.
+External connections: GNSS antenna only (IPEX connector, active patch recommended).
 
 **GPS antenna placement**: must have clear sky view. Magnetic mount antenna on the roof is ideal. Avoid placing under metal panels.
 
@@ -72,22 +73,26 @@ Heltec LoRa 32 V3 (ESP32-S3)
 
 ### Prerequisites
 
-Install in Arduino IDE (Tools → Manage Libraries):
-- `heltec_unofficial` by ropg
-- `SparkFun u-blox GNSS Arduino Library`
-- `DHT sensor library` by Adafruit
-- `Adafruit BMP3XX Library`
-- `ArduinoJson` by Benoit Blanchon
+**Board manager**: Add Heltec board package URL in Arduino IDE preferences:
+```
+https://resource.heltec.cn/download/package_heltec_esp32_index.json
+```
+Then: Tools → Board → Board Manager → search "Heltec" → install "Heltec ESP32 Series Dev-boards"
 
-Board selection: `Heltec WiFi LoRa 32(V3)` (under Heltec ESP32 Series in board manager)
+**Libraries** (Tools → Manage Libraries):
+- `RadioLib` by Jan Gromes
+- `TinyGPSPlus` by Mikal Hart
+- `DHT sensor library` by Adafruit (base station only)
+- `Adafruit BMP3XX Library` (base station only)
+- `ArduinoJson` by Benoit Blanchon (base station only)
 
 ### Car Unit
 
 1. Open `firmware/car-unit/car_unit.ino`
 2. Set `SESSION_ID` (e.g. `"S001"`) — increment each session
-3. Select board: `Heltec WiFi LoRa 32(V3)`, upload speed: 921600
-4. Connect GPS, power on — OLED shows satellite count until fix
-5. LED blinks on each LoRa transmit
+3. Select board: `Heltec Wireless Tracker`, upload speed: 921600
+4. Connect GNSS antenna, open Serial Monitor at 115200 baud
+5. "Waiting for GNSS fix..." then TX lines appear once fix is acquired
 
 ### Base Station
 
@@ -102,8 +107,10 @@ Board selection: `Heltec WiFi LoRa 32(V3)` (under Heltec ESP32 Series in board m
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| "GPS not detected" on OLED | Wrong UART pins or wiring | Check GPIO 45/46 wiring |
-| 0 satellites on car unit | No sky view / antenna | Move antenna, wait 60s for cold fix |
-| Base station shows 0 LoRa packets | Frequency mismatch or range | Verify both boards use 905.2 MHz; reduce distance to test |
-| WiFi not connecting | Wrong credentials | Re-check SSID/password, 2.4GHz only (ESP32 doesn't support 5GHz) |
+| `sats: 0` in Serial output | No sky view / antenna | Move antenna outside or near window; UC6580 cold start takes ~60s |
+| No GNSS data (all zeros) | GNSS power or UART issue | Verify GPIO3 is set HIGH; check Serial1 on pins 33/34 |
+| `LoRa init failed: -2` | SPI wiring or pin mismatch | Verify SX1262 pins match your Wireless Tracker hardware version |
+| `TX failed` in Serial | LoRa busy or config mismatch | Confirm frequency/SF/BW match base station; check `setDio2AsRfSwitch(true)` |
+| Base station shows 0 LoRa packets | Frequency mismatch or range | Verify both boards use 905.2 MHz; test within 10m |
+| WiFi not connecting (base station) | Wrong credentials | Re-check SSID/password, 2.4GHz only |
 | HTTP POST fails | Wrong API endpoint | Confirm API_TELEMETRY matches Terraform output `api_endpoint` |

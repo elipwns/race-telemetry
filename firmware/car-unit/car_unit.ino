@@ -1,81 +1,99 @@
 /*
  * Race Telemetry - CAR UNIT
- * Heltec LoRa 32 V3 (ESP32) + u-blox NEO-M8N GPS
+ * Heltec Wireless Tracker (HTIT-Tracker) — ESP32-S3, SX1262, UC6580 GNSS
  *
- * Reads GPS at 5Hz and broadcasts telemetry over LoRa.
+ * Reads GNSS at ~1Hz (UC6580 default) and broadcasts telemetry over LoRa.
  * No WiFi needed — base station handles cloud upload.
  *
- * Libraries required:
- *   - heltec_unofficial (LoRa + OLED)
- *   - SparkFun u-blox GNSS Arduino Library
+ * Board: "Heltec Wireless Tracker" (Heltec ESP32 board package)
+ * Board manager URL: https://resource.heltec.cn/download/package_heltec_esp32_index.json
  *
- * Hardware wiring (GPS to Heltec LoRa 32 V3):
- *   GPS TX  -> ESP32 GPIO 45 (RX1)
- *   GPS RX  -> ESP32 GPIO 46 (TX1)
- *   GPS VCC -> 3.3V
- *   GPS GND -> GND
+ * Libraries required:
+ *   - RadioLib        (LoRa — install via Library Manager)
+ *   - TinyGPSPlus     (NMEA parsing — install via Library Manager)
+ *
+ * All pins below are for Wireless Tracker V1. Verify against your board's
+ * schematic if something doesn't work: https://resource.heltec.cn/download
  *
  * See CONFIG.md for session ID configuration.
  */
 
-#include <heltec_unofficial.h>
-#include <SparkFun_u-blox_GNSS_Arduino_Library.h>
+#include <RadioLib.h>
+#include <TinyGPSPlus.h>
 #include <HardwareSerial.h>
+#include <SPI.h>
 
-// --- Configuration ---
+// --- Session ID ---
 #define SESSION_ID "S001"         // Change before each session
 
-// LoRa settings (must match base station)
+// --- LoRa settings (must match base station) ---
 #define FREQUENCY        905.2
 #define BANDWIDTH        125.0
 #define SPREADING_FACTOR 7
+#define CODING_RATE      5
 #define TRANSMIT_POWER   14
 
-// GPS serial port
-#define GPS_SERIAL_PORT  Serial1
-#define GPS_RX_PIN       45
-#define GPS_TX_PIN       46
-#define GPS_BAUD         38400
+// --- SX1262 pins (Wireless Tracker V1) ---
+#define LORA_CS    8
+#define LORA_DIO1  14
+#define LORA_RST   12
+#define LORA_BUSY  13
+#define LORA_SCK   9
+#define LORA_MISO  11
+#define LORA_MOSI  10
 
-// Transmit interval (ms) — 200ms = 5Hz
-#define TX_INTERVAL_MS   200
+// --- UC6580 GNSS pins (Wireless Tracker V1) ---
+#define GNSS_RX_PIN   33   // ESP32 receives from GNSS TX
+#define GNSS_TX_PIN   34   // ESP32 transmits to GNSS RX
+#define GNSS_VCC_PIN   3   // Power enable — set HIGH to power GNSS module
+#define GNSS_BAUD   9600
+
+// --- Transmit interval ---
+#define TX_INTERVAL_MS   1000   // 1Hz — UC6580 default output rate
 
 // --- Globals ---
-SFE_UBLOX_GNSS gps;
+SX1262 radio = new Module(LORA_CS, LORA_DIO1, LORA_RST, LORA_BUSY);
+TinyGPSPlus gps;
+HardwareSerial gnssSerial(1);
 unsigned long lastTx = 0;
 
 void setup() {
-  heltec_setup();
-  both.println("CAR UNIT");
-  both.println("Starting up...");
+  Serial.begin(115200);
+  delay(500);
+  Serial.println("CAR UNIT — Wireless Tracker");
+  Serial.println("Session: " + String(SESSION_ID));
 
-  // Initialize LoRa (TX only, no receive)
-  RADIOLIB_OR_HALT(radio.begin());
-  RADIOLIB_OR_HALT(radio.setFrequency(FREQUENCY));
-  RADIOLIB_OR_HALT(radio.setBandwidth(BANDWIDTH));
-  RADIOLIB_OR_HALT(radio.setSpreadingFactor(SPREADING_FACTOR));
-  RADIOLIB_OR_HALT(radio.setOutputPower(TRANSMIT_POWER));
+  // Power on GNSS module
+  pinMode(GNSS_VCC_PIN, OUTPUT);
+  digitalWrite(GNSS_VCC_PIN, HIGH);
+  delay(100);
 
-  // Initialize GPS
-  GPS_SERIAL_PORT.begin(GPS_BAUD, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
+  // Init GNSS UART
+  gnssSerial.begin(GNSS_BAUD, SERIAL_8N1, GNSS_RX_PIN, GNSS_TX_PIN);
+  Serial.println("GNSS serial started");
 
-  if (!gps.begin(GPS_SERIAL_PORT)) {
-    both.println("GPS not detected!");
-    // Continue — will show 0 satellites until fix
+  // Init LoRa
+  SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_CS);
+
+  int state = radio.begin(FREQUENCY, BANDWIDTH, SPREADING_FACTOR,
+                           CODING_RATE, RADIOLIB_SX126X_SYNC_WORD_PRIVATE,
+                           TRANSMIT_POWER);
+  if (state != RADIOLIB_ERR_NONE) {
+    Serial.println("LoRa init failed: " + String(state));
+    while (true);
   }
+  // Required for SX1262: use DIO2 as RF switch
+  radio.setDio2AsRfSwitch(true);
 
-  gps.setNavigationFrequency(5);  // 5Hz updates
-
-  display.clear();
-  display.setFont(ArialMT_Plain_16);
-  display.drawString(0, 0, "CAR UNIT");
-  display.drawString(0, 20, "Session: " + String(SESSION_ID));
-  display.display();
+  Serial.println("LoRa ready");
+  Serial.println("Waiting for GNSS fix...");
 }
 
 void loop() {
-  heltec_loop();
-  gps.checkUblox();
+  // Feed all available GNSS bytes to TinyGPS++
+  while (gnssSerial.available()) {
+    gps.encode(gnssSerial.read());
+  }
 
   if (millis() - lastTx >= TX_INTERVAL_MS) {
     lastTx = millis();
@@ -84,36 +102,24 @@ void loop() {
 }
 
 void transmitTelemetry() {
-  long lat = gps.getLatitude();    // degrees * 1e-7
-  long lon = gps.getLongitude();   // degrees * 1e-7
-  long speed = gps.getSpeedKmph(); // mm/s → kph via library
-  long heading = gps.getHeading(); // degrees * 1e-5
-  byte sats = gps.getSIV();        // satellites in view
+  double lat      = gps.location.isValid() ? gps.location.lat()     : 0.0;
+  double lon      = gps.location.isValid() ? gps.location.lng()     : 0.0;
+  double speedKph = gps.speed.isValid()    ? gps.speed.kmph()       : 0.0;
+  int    heading  = gps.course.isValid()   ? (int)gps.course.deg()  : 0;
+  int    sats     = gps.satellites.isValid() ? (int)gps.satellites.value() : 0;
 
   // Format: TEL:{session}:{lat}:{lon}:{speed_kph}:{heading}:{sats}:{millis}
-  // Lat/lon stored as integer degrees * 1e-7, divide for 7 decimal places
   char packet[80];
   snprintf(packet, sizeof(packet),
     "TEL:%s:%.7f:%.7f:%.1f:%d:%d:%lu",
-    SESSION_ID,
-    lat / 10000000.0,
-    lon / 10000000.0,
-    speed / 1000.0,    // mm/s to kph
-    (int)(heading / 100000),
-    sats,
-    millis()
+    SESSION_ID, lat, lon, speedKph, heading, sats, millis()
   );
 
-  radio.transmit(packet);
+  int state = radio.transmit(packet);
 
-  // Update OLED every transmit
-  display.clear();
-  display.setFont(ArialMT_Plain_10);
-  display.drawString(0, 0, String(SESSION_ID) + "  Sats:" + String(sats));
-  display.setFont(ArialMT_Plain_16);
-  display.drawString(0, 14, String(speed / 1000.0, 0) + " kph");
-  display.setFont(ArialMT_Plain_10);
-  display.drawString(0, 36, String(lat / 10000000.0, 6));
-  display.drawString(0, 48, String(lon / 10000000.0, 6));
-  display.display();
+  if (state == RADIOLIB_ERR_NONE) {
+    Serial.println("TX: " + String(packet));
+  } else {
+    Serial.println("TX failed: " + String(state));
+  }
 }
