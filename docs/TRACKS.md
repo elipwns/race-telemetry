@@ -42,11 +42,28 @@ notes: ""
 
 ## Lucky Dog Racing Schedule (2026)
 
-_Tracks to be filled in as we attend events. Record coordinates on-site for accuracy._
+_Record coordinates on-site for accuracy. Approximate coords are noted where known._
 
-<!-- Add tracks here as you attend events:
+### Portland International Raceway
 
-### [Track Name]
-...
-
--->
+```yaml
+name: Portland International Raceway
+location: Portland, OR
+website: https://www.portlandraceway.com
+length_miles: 1.967
+series_events:
+  - TBD 2026
+start_finish:
+  lat: 45.5958       # approximate — record precisely on-site
+  lon: -122.6960     # approximate — record precisely on-site
+  heading: 90        # approximate, eastbound on main straight
+map_default:
+  center_lat: 45.5920
+  center_lon: -122.6928
+  zoom: 15
+notes: >
+  Clockwise circuit. Long back straight (~2000ft) between T2 and T3.
+  Chicane in infield. Hairpin at south end. Carousel complex before
+  returning to main straight. Demo page at elikloft.com/telemetry uses
+  approximate waypoints — update app.js once real coords are confirmed.
+```
