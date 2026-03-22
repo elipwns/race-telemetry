@@ -53,6 +53,7 @@ HardwareSerial gnssSerial(1);
 
 unsigned long lastTx = 0;
 int txCount = 0;
+unsigned long gnssBytes = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -87,6 +88,7 @@ void setup() {
 void loop() {
   while (gnssSerial.available()) {
     gps.encode(gnssSerial.read());
+    gnssBytes++;
   }
 
   if (millis() - lastTx >= TX_INTERVAL_MS) {
@@ -137,9 +139,16 @@ void updateDisplay(float speedMph, int sats, double lat, double lon, bool txOk) 
   snprintf(buf, sizeof(buf), "%3d mph", (int)speedMph);
   tft.st7735_write_str(0, 16, buf, Font_16x26, ST7735_WHITE, ST7735_BLACK);
 
-  // Rows 3-4: coordinates — fixed width
-  snprintf(buf, sizeof(buf), "% 9.5f", lat);
-  tft.st7735_write_str(0, 50, buf, Font_7x10, ST7735_CYAN, ST7735_BLACK);
-  snprintf(buf, sizeof(buf), "% 10.5f", lon);
-  tft.st7735_write_str(0, 62, buf, Font_7x10, ST7735_CYAN, ST7735_BLACK);
+  // Rows 3-4: coords once fixed, otherwise show GNSS byte counter
+  if (sats > 0) {
+    snprintf(buf, sizeof(buf), "% 9.5f", lat);
+    tft.st7735_write_str(0, 50, buf, Font_7x10, ST7735_CYAN, ST7735_BLACK);
+    snprintf(buf, sizeof(buf), "% 10.5f", lon);
+    tft.st7735_write_str(0, 62, buf, Font_7x10, ST7735_CYAN, ST7735_BLACK);
+  } else {
+    snprintf(buf, sizeof(buf), "rx:%-7lu", gnssBytes);
+    tft.st7735_write_str(0, 50, buf, Font_7x10,
+                          gnssBytes > 0 ? ST7735_YELLOW : ST7735_RED, ST7735_BLACK);
+    tft.st7735_write_str(0, 62, "searching...  ", Font_7x10, ST7735_YELLOW, ST7735_BLACK);
+  }
 }
