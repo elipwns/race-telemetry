@@ -5,6 +5,9 @@
  * Receives telemetry from car unit via LoRa, posts to AWS.
  * Also reads weather sensors and posts on a separate interval.
  *
+ * Session management: press and hold PRG button (GPIO0) for 2s to increment
+ * session ID (S001, S002, ...). Persists across power cycles via Preferences.
+ *
  * Libraries required:
  *   - heltec_unofficial (LoRa + OLED)
  *   - DHT sensor library (Adafruit)
@@ -23,6 +26,7 @@
  */
 
 #include <heltec_unofficial.h>
+#include <Preferences.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
@@ -51,19 +55,44 @@
 // --- Globals ---
 DHT dht(DHT_PIN, DHT_TYPE);
 Adafruit_BMP3XX bmp;
+Preferences prefs;
 
 volatile bool rxFlag = false;
 String rxdata;
 unsigned long lastWeatherPost = 0;
-String lastSession = "";
+String sessionId = "S001";
 float lastSpeed = 0;
 byte lastSats = 0;
+bool holdHandled = false;         // prevents repeated increments per hold
+unsigned long newSessionFlash = 0; // show "NEW SESSION" briefly on display
 
 void rx() { rxFlag = true; }
 
+void incrementSession() {
+  prefs.begin("telemetry", false);
+  int num = prefs.getInt("session_num", 1) + 1;
+  prefs.putInt("session_num", num);
+  prefs.end();
+  char buf[8];
+  snprintf(buf, sizeof(buf), "S%03d", num);
+  sessionId = buf;
+  newSessionFlash = millis();
+  Serial.println("Session incremented to: " + sessionId);
+}
+
 void setup() {
   heltec_setup();
+
+  // Load persisted session number
+  prefs.begin("telemetry", true);
+  int num = prefs.getInt("session_num", 1);
+  prefs.end();
+  char buf[8];
+  snprintf(buf, sizeof(buf), "S%03d", num);
+  sessionId = buf;
+
   both.println("BASE STATION");
+  both.println("Session: " + sessionId);
 
   // Initialize LoRa in receive mode
   RADIOLIB_OR_HALT(radio.begin());
@@ -99,6 +128,17 @@ void setup() {
 
 void loop() {
   heltec_loop();
+
+  // Press and hold PRG button for 2s to increment session ID
+  if (button.pressedFor(2000)) {
+    if (!holdHandled) {
+      holdHandled = true;
+      incrementSession();
+      updateDisplay();
+    }
+  } else {
+    holdHandled = false;
+  }
 
   // Handle incoming LoRa telemetry
   if (rxFlag) {
@@ -153,9 +193,8 @@ void handleTelemetry(const String& packet) {
   String sats    = parts[5];
   String ms      = parts[6];
 
-  lastSession = session;
-  lastSpeed   = speed.toFloat() * 0.621371;
-  lastSats    = sats.toInt();
+  lastSpeed = speed.toFloat() * 0.621371;
+  lastSats  = sats.toInt();
 
   updateDisplay();
 
@@ -166,7 +205,7 @@ void handleTelemetry(const String& packet) {
   http.addHeader("Content-Type", "application/json");
 
   StaticJsonDocument<256> doc;
-  doc["session_id"] = session;
+  doc["session_id"] = sessionId;  // base station owns the session ID
   doc["lat"]        = lat.toFloat();
   doc["lon"]        = lon.toFloat();
   doc["speed_kph"]  = speed.toFloat();
@@ -193,7 +232,7 @@ void postWeather() {
   http.addHeader("Content-Type", "application/json");
 
   StaticJsonDocument<200> doc;
-  doc["session_id"]    = lastSession.length() > 0 ? lastSession : "unknown";
+  doc["session_id"]    = sessionId;
   doc["temp_c"]        = temp;
   doc["humidity_pct"]  = humidity;
   doc["pressure_hpa"]  = pressure;
@@ -207,7 +246,11 @@ void postWeather() {
 void updateDisplay() {
   display.clear();
   display.setFont(ArialMT_Plain_10);
-  display.drawString(0, 0, "BASE STATION  " + lastSession);
+
+  bool flashing = (newSessionFlash > 0 && millis() - newSessionFlash < 2000);
+  String header = flashing ? ("NEW SESSION: " + sessionId) : ("BASE STATION  " + sessionId);
+  display.drawString(0, 0, header);
+
   display.setFont(ArialMT_Plain_16);
   display.drawString(0, 14, String(lastSpeed, 0) + " mph  " + String(lastSats) + " sats");
   display.setFont(ArialMT_Plain_10);
