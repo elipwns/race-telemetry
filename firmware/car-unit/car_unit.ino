@@ -119,8 +119,9 @@ void transmitTelemetry() {
 }
 
 void updateDisplay(float speedMph, int sats, double lat, double lon, bool txOk) {
-  // No fill_screen — overwrite in place to avoid flicker/scroll tearing.
-  // Fixed-width strings ensure old characters are always covered.
+  // One-time clear to wipe boot screen, then overwrite in place each update.
+  static bool cleared = false;
+  if (!cleared) { tft.st7735_fill_screen(ST7735_BLACK); cleared = true; }
 
   char buf[24];
 
