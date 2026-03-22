@@ -147,7 +147,7 @@ void handleTelemetry(const String& packet) {
   String ms      = parts[6];
 
   lastSession = session;
-  lastSpeed   = speed.toFloat();
+  lastSpeed   = speed.toFloat() * 0.621371;
   lastSats    = sats.toInt();
 
   updateDisplay();
@@ -202,7 +202,7 @@ void updateDisplay() {
   display.setFont(ArialMT_Plain_10);
   display.drawString(0, 0, "BASE STATION  " + lastSession);
   display.setFont(ArialMT_Plain_16);
-  display.drawString(0, 14, String(lastSpeed, 0) + " kph  " + String(lastSats) + " sats");
+  display.drawString(0, 14, String(lastSpeed, 0) + " mph  " + String(lastSats) + " sats");
   display.setFont(ArialMT_Plain_10);
 
   float temp = dht.readTemperature();

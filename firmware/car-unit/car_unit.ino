@@ -118,7 +118,7 @@ void transmitTelemetry() {
   int state = radio.transmit(packet);
 
   if (state == RADIOLIB_ERR_NONE) {
-    Serial.println("TX: " + String(packet));
+    Serial.println("TX: " + String(packet) + "  (" + String(speedKph * 0.621371, 0) + " mph, " + String(sats) + " sats)");
   } else {
     Serial.println("TX failed: " + String(state));
   }
