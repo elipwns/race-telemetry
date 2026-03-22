@@ -7,7 +7,7 @@ dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('telemetry-runs')
 
 sns = boto3.client('sns')
-SNS_TOPIC_ARN = 'arn:aws:sns:us-west-2:ACCOUNT_ID:telemetry-events'
+SNS_TOPIC_ARN = 'arn:aws:sns:us-west-2:772255980793:telemetry-events'
 
 def lambda_handler(event, context):
     try:

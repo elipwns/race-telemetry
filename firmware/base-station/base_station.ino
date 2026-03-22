@@ -30,10 +30,10 @@
 #include <Adafruit_BMP3XX.h>
 
 // --- Configuration ---
-#define WIFI_SSID     "YOUR_WIFI_SSID"
-#define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
-#define API_TELEMETRY "YOUR_API_GATEWAY_ENDPOINT/telemetry"
-#define API_WEATHER   "YOUR_API_GATEWAY_ENDPOINT/weather"
+#define WIFI_SSID     "YOUR_WIFI_SSID"       // fill in before flashing
+#define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"   // fill in before flashing
+#define API_TELEMETRY "https://pe3daa8fi7.execute-api.us-west-2.amazonaws.com/prd/telemetry"
+#define API_WEATHER   "https://pe3daa8fi7.execute-api.us-west-2.amazonaws.com/prd/weather"
 
 // LoRa settings (must match car unit)
 #define FREQUENCY        905.2
