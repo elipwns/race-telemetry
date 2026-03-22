@@ -42,7 +42,26 @@ notes: ""
 
 ## Lucky Dog Racing Schedule (2026)
 
-_Record coordinates on-site for accuracy. Approximate coords are noted where known._
+_Full 2026 calendar — we won't attend all of these. Record GPS coordinates on-site at each event attended for Phase 2 lap timing._
+
+| Date | Track | Location | Early Dawg Discount |
+|------|-------|----------|-------------------|
+| Jan 17–18 | WeatherTech Raceway Laguna Seca | Monterey, CA | 12/17/2025 |
+| Feb 13–15 | Sonoma Raceway (3 days) | Sonoma, CA | included in entry |
+| Feb 28–Mar 1 | Carolina Motorsports Park | Kershaw, SC | 1/28/2026 |
+| Apr 24–26 | Ridge Motorsports Park (3 days) | Shelton, WA | 3/25/2026 |
+| May 16–17 | Atlanta Motorsports Park | Dawsonville, GA | 4/16/2026 |
+| May 30–31 | Buttonwillow Raceway Park *(NEW — The Circuit)* | Buttonwillow, CA | 4/30/2026 |
+| Jun 13–14 | Oregon Raceway Park | Grass Valley, OR | 5/13/2026 |
+| Jun 26–27 | VIRginia Int'l Raceway | Alton, VA | 5/26/2026 |
+| Jul 18–19 | Portland Int'l Raceway | Portland, OR | 6/18/2026 |
+| Sept 11–13 | Ridge Motorsports Park (3 days) | Shelton, WA | 6/18/2026 |
+| Sept 26–27 | Carolina Motorsports Park | Kershaw, SC | 8/12/2026 |
+| Oct 10–11 | Chuckwalla Valley Raceway | Desert Center, CA | 9/10/2026 |
+| Nov 14–15 | Thunderhill Raceway Park 5 Mile *(1000 Miles, overnight)* | Willows, CA | 10/14/2026 |
+| Dec 12–13 | Barber Motorsports Park | Birmingham, AL | 11/12/2026 |
+
+---
 
 ### Portland International Raceway
 
@@ -52,7 +71,8 @@ location: Portland, OR
 website: https://www.portlandraceway.com
 length_miles: 1.967
 series_events:
-  - TBD 2026
+  - 2026-07-18
+  - 2026-07-19
 start_finish:
   lat: 45.5950       # TrackAddict reference — confirm on-site
   lon: -122.6940     # TrackAddict reference — confirm on-site

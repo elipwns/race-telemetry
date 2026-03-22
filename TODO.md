@@ -1,7 +1,7 @@
 # TODO / Roadmap
 
 ## Current Focus
-> Phase 1 MVP — target: Lucky Dog Race #2 (~3 months out from 2026-03-21)
+> Phase 1 MVP — target: Portland Int'l Raceway, July 18–19 2026
 
 **Remaining blockers before first real drive test:**
 - [ ] Connect external IPEX GNSS antenna to Wireless Tracker — confirmed NMEA bytes flowing, no fix without it
