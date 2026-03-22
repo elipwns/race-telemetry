@@ -4,10 +4,13 @@
 > Phase 1 MVP — target: Lucky Dog Race #2 (~3 months out from 2026-03-21)
 
 **Next up:**
-- [ ] Order hardware (see HARDWARE.md BOM)
+- [ ] Order hardware (see HARDWARE.md BOM) — get a POC on the road ASAP
+- [ ] Wire and bench test car unit + base station
 - [ ] Terraform apply + confirm all AWS resources come up clean
-- [ ] Bench test: flash both boards, verify LoRa packets received on base station Serial Monitor
-- [ ] Bench test: confirm DynamoDB rows appear after base station posts
+- [ ] Get Ryan's email → create AWS console login for his IAM user (see aws-iam-management PR)
+- [ ] Bench test: POST to /telemetry via curl, verify DynamoDB row appears
+
+**Terraform note**: `terraform apply` stays in lead dev's hands for now. Open a PR with `.tf` changes, get it merged, then ping to trigger the apply. See CONTRIBUTING.md.
 
 ---
 
@@ -48,7 +51,7 @@ _Goal: live car position on Leaflet map from pit laptop over mobile hotspot_
 _Goal: lap timing, session history on dashboard, data scientist self-service_
 
 - [ ] `telemetry-query` Lambda: `GET /telemetry?session_id=X` returns last N points — dashboard calls on load to show history trail
-- [ ] Lap timing: detect start/finish line crossing via GPS coords from TRACKS.md, calculate lap time, store in new `lap-times` DynamoDB table
+- [ ] Lap timing: record start/finish GPS coords at PIR on-site (see TRACKS.md), then detect line crossing to calculate lap time. Cross-reference against official Lucky Dog times to validate accuracy. Store in new `lap-times` DynamoDB table
 - [ ] Dashboard: display current lap time + best lap
 - [ ] Session end endpoint: `POST /session/end` triggers S3 CSV export of session data
 - [ ] S3 export Lambda: dump `telemetry-runs` session to `s3://race-telemetry-data/sessions/{session_id}/telemetry.csv`

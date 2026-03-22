@@ -1,5 +1,11 @@
 # Contributing
 
+## Terraform Applies
+
+`terraform apply` is handled by the lead dev for now. Open a PR with your `.tf` changes, get it reviewed and merged, then ping in the group chat so the apply doesn't get missed. Don't apply from your own machine unless you've been explicitly handed the keys.
+
+This keeps things simple for a team of 3. If the team grows, we'll look at Terraform Cloud or GitHub Actions OIDC.
+
 ## AWS Infrastructure Changes
 
 All infrastructure changes must go through Terraform — never click-ops in the console.
