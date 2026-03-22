@@ -1,0 +1,23 @@
+# Terraform
+terraform/.terraform/
+terraform/*.zip
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/terraform.tfvars
+
+# Arduino
+*.elf
+*.hex
+*.bin
+
+# Python
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# Secrets
+*.env
+credentials*

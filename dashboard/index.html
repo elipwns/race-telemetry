@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Race Telemetry</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Race Telemetry</h1>
+    <div id="connection-status" class="status disconnected">Disconnected</div>
+  </header>
+
+  <main>
+    <div id="map-panel">
+      <div id="map"></div>
+    </div>
+
+    <div id="data-panel">
+      <div class="data-card" id="card-speed">
+        <div class="label">Speed</div>
+        <div class="value" id="speed">—</div>
+        <div class="unit">kph</div>
+      </div>
+
+      <div class="data-card" id="card-gps">
+        <div class="label">GPS</div>
+        <div class="value" id="satellites">—</div>
+        <div class="unit">satellites</div>
+      </div>
+
+      <div class="data-card" id="card-session">
+        <div class="label">Session</div>
+        <div class="value" id="session-id">—</div>
+        <div class="unit" id="session-time">waiting...</div>
+      </div>
+
+      <div class="data-card" id="card-weather">
+        <div class="label">Weather</div>
+        <div class="value" id="temp">—</div>
+        <div class="unit">°C</div>
+        <div id="weather-detail">
+          <span id="humidity">—</span>% humidity &nbsp;
+          <span id="pressure">—</span> hPa
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
