@@ -53,7 +53,7 @@ _Goal: lap timing, session history on dashboard, data scientist self-service_
 - [ ] `telemetry-query` Lambda: `GET /telemetry?session_id=X` returns last N points — dashboard calls on load to show history trail
 - [ ] Lap timing: record start/finish GPS coords at PIR on-site (see TRACKS.md), then detect line crossing to calculate lap time. Cross-reference against official Lucky Dog times to validate accuracy. Store in new `lap-times` DynamoDB table
 - [ ] Dashboard: display current lap time + best lap
-- [ ] Predictive lap delta: compare current position progress vs. reference lap (best lap) in real time, display +/- delta on the Wireless Tracker TFT display in the car. Reference: VBOX Motorsport does this as a paid product — this is the core "am I ahead of my best lap right now" feature. Requires: best lap GPS+timestamp trace stored on-device, per-point time interpolation, delta rendered on TFT.
+- [ ] Predictive lap delta: compare current position progress vs. reference lap (best lap) in real time. Requires: best lap GPS+timestamp trace stored on-device, per-point time interpolation, delta output to external display. The Wireless Tracker TFT is too small to read at speed — needs a dedicated external display (e.g. large 7-segment or small ruggedized LCD mounted on dash). Green = ahead, red = behind.
 - [ ] Session end endpoint: `POST /session/end` triggers S3 CSV export of session data
 - [ ] S3 export Lambda: dump `telemetry-runs` session to `s3://race-telemetry-data/sessions/{session_id}/telemetry.csv`
 - [ ] Update `data-analyst` IAM role with S3 read access to exports bucket
@@ -82,6 +82,14 @@ _Goal: tire temp + suspension data for setup optimization_
 - [ ] Determine if second ESP32 is needed on car (Heltec runs out of ADC pins with 4+4 sensors)
 - [ ] Design second ESP32 → primary car unit serial/I2C bridge if needed
 - [ ] Add setup logging: driver enters toe/camber/damper settings before session, stored with session metadata
+
+---
+
+## Future — In-Car Driver Aids
+_Wishlist features for situational awareness and driver feedback_
+
+- [ ] External lap delta display: dedicated dash-mounted display for +/- lap delta. Needs to be large/bright enough to read at speed with helmet on. Options to evaluate: large 7-segment module, small ruggedized LCD, or LED bar (simpler — just ahead/behind/neutral). Driven by serial output from Wireless Tracker.
+- [ ] Blind spot / proximity warning: ultrasonic sensors (HC-SR04 or similar) mounted in rear quarter panels to detect cars alongside. Drive a set of indicator LEDs (left side / right side) visible in the driver's peripheral vision — compensates for limited mirror visibility and restricted head movement with HANS device. Needs evaluation of sensor range and false-positive rate at racing speeds before committing to hardware.
 
 ---
 
