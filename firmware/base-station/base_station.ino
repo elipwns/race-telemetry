@@ -108,6 +108,10 @@ void loop() {
     Serial.print("RX status: "); Serial.println(state);
     Serial.print("RX data: ["); Serial.print(rxdata); Serial.println("]");
 
+    // Trim any garbage bytes before "TEL:"
+    int telIdx = rxdata.indexOf("TEL:");
+    if (telIdx > 0) rxdata = rxdata.substring(telIdx);
+
     if (state == RADIOLIB_ERR_NONE && rxdata.startsWith("TEL:")) {
       handleTelemetry(rxdata);
     }
