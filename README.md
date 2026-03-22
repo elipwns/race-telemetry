@@ -51,8 +51,8 @@ docs/               Architecture, hardware, setup, and data access guides
 
 | Unit | Board | Extra Hardware |
 |---|---|---|
-| Car | Heltec LoRa 32 V3 | u-blox NEO-M8N GPS |
-| Base | Heltec LoRa 32 V3 | DHT22 + BMP388 |
+| Car | Heltec Wireless Tracker (ESP32-S3 + UC6580 GNSS + SX1262) | External IPEX GNSS antenna |
+| Base | Heltec LoRa 32 V3 | DHT22 + BMP388 (weather sensors — not yet wired) |
 
 LoRa: 905.2 MHz · SF7 · 125 kHz BW · 14 dBm
 
@@ -60,7 +60,7 @@ LoRa: 905.2 MHz · SF7 · 125 kHz BW · 14 dBm
 
 - **Phase 1 (MVP)**: GPS position + speed, live map, weather station
 - **Phase 2**: Lap timing, session history, data export for analysis
-- **Phase 3**: Driver inputs (throttle %, brake %, steering angle)
+- **Phase 3**: Vehicle data via CAN bus (OBD2 or aftermarket ECU — throttle, brake, RPM, wheel speeds)
 - **Phase 4**: Car development sensors (tire temps, shock height)
 
 ## Data Access
