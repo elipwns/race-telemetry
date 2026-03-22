@@ -62,15 +62,30 @@ _Goal: lap timing, session history on dashboard, data scientist self-service_
 
 ---
 
-## Phase 3 — Driver Inputs
-_Goal: live throttle/brake/steering traces on dashboard_
+## Phase 3 — Vehicle Data Integration (CAN Bus)
+_Goal: live throttle/brake/RPM/wheel speed traces on dashboard — no analog wiring_
 
-- [ ] Research throttle position sensor tap on the car (consult with driver)
-- [ ] Add throttle (0-3.3V analog), brake pressure transducer (0.5-4.5V), steering angle sensor to car unit wiring
-- [ ] Extend TEL message: `...:{throttle_pct}:{brake_pct}:{steering_deg}:{millis}`
-- [ ] Update `telemetry-ingest` Lambda to store new fields (no schema change needed in DynamoDB)
+Two paths depending on the car. Both use an MCP2515 CAN transceiver on the ESP32-S3 SPI bus (shares bus with LoRa, different CS pin). Zero backend changes — same TEL payload structure, same Lambda, same DynamoDB schema.
+
+**Path A — OBD2 (modern stock ECU cars, 2008+ CAN-mandated)**
+- [ ] Add MCP2515 to car unit hardware (SPI, ~$5, powered from Vext)
+- [ ] Read OBD2 Mode 1 PIDs: vehicle speed (0x0D), RPM (0x0C), throttle (0x11), engine load (0x04), brake switch
+- [ ] Extend TEL message: `...:{throttle_pct}:{brake_pct}:{rpm}:{gear}:{millis}`
+- [ ] Update `telemetry-ingest` Lambda to store new fields
+
+**Path B — Aftermarket ECU (race cars on Haltech, MoTeC, AEM, Link, Megasquirt, Ecumaster, etc.)**
+- [ ] Add MCP2515 to car unit hardware (same as Path A)
+- [ ] Implement configurable CAN ID mapping layer in firmware: define which CAN ID + byte offset maps to which telemetry field — makes it ECU-agnostic across the field
+- [ ] Target data: wheel speeds x4, RPM, throttle, gear, oil pressure/temp, fuel pressure, lambda/AFR, boost (where available)
+- [ ] Extend TEL message with vehicle data fields (same Lambda/DynamoDB update as Path A)
+- [ ] Document CAN config format in HARDWARE.md with examples for common ECUs
+
+**Shared**
 - [ ] Dashboard: add Chart.js throttle + brake trace panels (time on X axis)
+- [ ] Dashboard: add RPM bar and gear indicator to live panel
 - [ ] Update HARDWARE.md and ARCHITECTURE.md
+
+> **Note on true ADR (wheel tick → GPS Kalman filter):** Requires swapping the UC6580 for a u-blox ZED-F9R (~$200 + custom carrier board). The UC6580 doesn't support `UBX-ESF-MEAS`. Deferred to Future — see issue #4.
 
 ---
 
