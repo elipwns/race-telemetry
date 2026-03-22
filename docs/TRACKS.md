@@ -63,6 +63,33 @@ _Full 2026 calendar — we won't attend all of these. Record GPS coordinates on-
 
 ---
 
+### Oregon Raceway Park
+
+```yaml
+name: Oregon Raceway Park
+location: Grass Valley, OR
+website: https://www.oregonracewaypark.com
+series_events:
+  - 2026-06-13
+  - 2026-06-14
+start_finish:
+  lat: 0.000000      # confirm on-site
+  lon: 0.000000      # confirm on-site
+  heading: 0         # confirm on-site
+map_default:
+  center_lat: 0.000000
+  center_lon: 0.000000
+  zoom: 15
+notes: >
+  High desert, fully open terrain — no trees, excellent LoRa line-of-sight.
+  Paddock/pit area sits elevated above the circuit; base station at the top
+  of the hill has clear sightlines to the entire track. Best radio environment
+  of any likely Lucky Dog venue. Plan to use this as the first live telemetry
+  test (June 13-14) before PIR. Confirm S/F coords and map center on-site.
+```
+
+---
+
 ### Portland International Raceway
 
 ```yaml

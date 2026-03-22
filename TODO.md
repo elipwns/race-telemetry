@@ -1,7 +1,7 @@
 # TODO / Roadmap
 
 ## Current Focus
-> Phase 1 MVP — target: Portland Int'l Raceway, July 18–19 2026
+> Phase 1 MVP — first live test: Oregon Raceway Park, June 13–14 2026 (ideal LoRa conditions — open high desert, base station elevated above circuit with full sightlines). Home track PIR July 18–19 2026.
 
 **Remaining blockers before first real drive test:**
 - [ ] Connect external IPEX GNSS antenna to Wireless Tracker — confirmed NMEA bytes flowing, no fix without it
