@@ -30,8 +30,8 @@
 #include <Adafruit_BMP3XX.h>
 
 // --- Configuration ---
-#define WIFI_SSID     "YOUR_WIFI_SSID"       // fill in before flashing
-#define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"   // fill in before flashing
+#define WIFI_SSID     "Kloft_Guest"
+#define WIFI_PASSWORD "loolwut710"
 #define API_TELEMETRY "https://pe3daa8fi7.execute-api.us-west-2.amazonaws.com/prd/telemetry"
 #define API_WEATHER   "https://pe3daa8fi7.execute-api.us-west-2.amazonaws.com/prd/weather"
 
