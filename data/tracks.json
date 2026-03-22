@@ -1,0 +1,85 @@
+{
+  "tracks": [
+    {
+      "id": "pir",
+      "name": "Portland International Raceway",
+      "city": "Portland",
+      "state": "OR",
+      "start_finish": { "lat": 45.595, "lon": -122.694 },
+      "osm_ways": [5529392, 1184207349, 1315957509],
+      "notes": "Lucky Dog home track. Full circuit ~1.967 mi. OSM centerline in elikloft-github-io/telemetry/app.js."
+    },
+    {
+      "id": "pacific-raceways",
+      "name": "Pacific Raceways",
+      "city": "Kent",
+      "state": "WA",
+      "start_finish": { "lat": 47.324, "lon": -122.152 },
+      "notes": "Grand Prix circuit ~2.25 mi."
+    },
+    {
+      "id": "sonoma",
+      "name": "Sonoma Raceway",
+      "city": "Sonoma",
+      "state": "CA",
+      "start_finish": { "lat": 38.161, "lon": -122.455 },
+      "notes": "Full road course ~2.52 mi."
+    },
+    {
+      "id": "buttonwillow",
+      "name": "Buttonwillow Raceway Park",
+      "city": "Buttonwillow",
+      "state": "CA",
+      "start_finish": { "lat": 35.489, "lon": -119.545 },
+      "notes": "Multiple configurations. Main config ~2.7 mi."
+    },
+    {
+      "id": "thunderhill",
+      "name": "Thunderhill Raceway Park",
+      "city": "Willows",
+      "state": "CA",
+      "start_finish": { "lat": 39.538, "lon": -122.331 },
+      "notes": "5-mile full circuit (East+West combined). East loop ~3 mi standalone."
+    },
+    {
+      "id": "high-plains",
+      "name": "High Plains Raceway",
+      "city": "Deer Trail",
+      "state": "CO",
+      "start_finish": { "lat": 39.735, "lon": -103.894 },
+      "notes": "~1.8 mi. High altitude (~5500 ft) — affects power and tire temps."
+    },
+    {
+      "id": "nola",
+      "name": "NOLA Motorsports Park",
+      "city": "Avondale",
+      "state": "LA",
+      "start_finish": { "lat": 29.885, "lon": -90.199 },
+      "notes": "~2.75 mi road course."
+    },
+    {
+      "id": "vir",
+      "name": "Virginia International Raceway",
+      "city": "Alton",
+      "state": "VA",
+      "start_finish": { "lat": 36.569, "lon": -79.207 },
+      "notes": "Full course ~3.27 mi. Multiple layout options."
+    },
+    {
+      "id": "road-atlanta",
+      "name": "Road Atlanta",
+      "city": "Braselton",
+      "state": "GA",
+      "start_finish": { "lat": 34.150, "lon": -83.814 },
+      "notes": "~2.54 mi. Fast, technical track with major elevation changes."
+    },
+    {
+      "id": "barber",
+      "name": "Barber Motorsports Park",
+      "city": "Leeds",
+      "state": "AL",
+      "start_finish": { "lat": 33.533, "lon": -86.620 },
+      "notes": "~2.38 mi. Hilly terrain."
+    }
+  ]
+}

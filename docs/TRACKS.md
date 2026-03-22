@@ -54,16 +54,17 @@ length_miles: 1.967
 series_events:
   - TBD 2026
 start_finish:
-  lat: 45.5958       # approximate — record precisely on-site
-  lon: -122.6960     # approximate — record precisely on-site
+  lat: 45.5950       # TrackAddict reference — confirm on-site
+  lon: -122.6940     # TrackAddict reference — confirm on-site
   heading: 90        # approximate, eastbound on main straight
 map_default:
-  center_lat: 45.5920
-  center_lon: -122.6928
+  center_lat: 45.5968
+  center_lon: -122.6955
   zoom: 15
 notes: >
   Clockwise circuit. Long back straight (~2000ft) between T2 and T3.
   Chicane in infield. Hairpin at south end. Carousel complex before
-  returning to main straight. Demo page at elikloft.com/telemetry uses
-  approximate waypoints — update app.js once real coords are confirmed.
+  returning to main straight. OSM centerline (86 nodes, way IDs
+  5529392/1184207349/1315957509) used for demo at elikloft.com/telemetry.
+  Confirm S/F coords on-site for Phase 2 lap timing.
 ```
