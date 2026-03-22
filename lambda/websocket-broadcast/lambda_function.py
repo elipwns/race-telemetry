@@ -2,7 +2,7 @@ import json
 import boto3
 
 dynamodb = boto3.resource('dynamodb')
-connections_table = dynamodb.Table('websocket-connections')
+connections_table = dynamodb.Table('rt-websocket-connections')
 
 # Update this after terraform apply (from outputs.tf)
 WEBSOCKET_ENDPOINT = 'https://REPLACE_ME.execute-api.us-west-2.amazonaws.com/prod'

@@ -3,7 +3,7 @@ import boto3
 from datetime import datetime, timezone
 
 dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table('websocket-connections')
+table = dynamodb.Table('rt-websocket-connections')
 
 def lambda_handler(event, context):
     try:
