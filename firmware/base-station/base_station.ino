@@ -8,6 +8,10 @@
  * Session management: press and hold PRG button (GPIO0) for 2s to increment
  * session ID (S001, S002, ...). Persists across power cycles via Preferences.
  *
+ * WiFi resilience: reconnects automatically if hotspot drops. Posts are queued
+ * locally (up to 60 entries) and flushed when WiFi comes back, minimising
+ * data loss during brief outages.
+ *
  * Libraries required:
  *   - heltec_unofficial (LoRa + OLED)
  *   - DHT sensor library (Adafruit)
@@ -49,8 +53,18 @@
 #define DHT_PIN  38
 #define DHT_TYPE DHT22
 
-// Weather post interval (ms)
-#define WEATHER_INTERVAL_MS 30000
+// Intervals
+#define WEATHER_INTERVAL_MS   30000
+#define RECONNECT_INTERVAL_MS 10000
+
+// Post queue — stores up to 60 JSON payloads when WiFi is down (~1 min of telemetry)
+#define QUEUE_MAX 60
+#define JSON_MAX  300
+
+struct QueuedPost {
+  char endpoint[8];   // "TEL" or "WX"
+  char json[JSON_MAX];
+};
 
 // --- Globals ---
 DHT dht(DHT_PIN, DHT_TYPE);
@@ -59,14 +73,21 @@ Preferences prefs;
 
 volatile bool rxFlag = false;
 String rxdata;
-unsigned long lastWeatherPost = 0;
+unsigned long lastWeatherPost  = 0;
+unsigned long lastReconnectAt  = 0;
 String sessionId = "S001";
-float lastSpeed = 0;
-byte lastSats = 0;
-bool holdHandled = false;         // prevents repeated increments per hold
-unsigned long newSessionFlash = 0; // show "NEW SESSION" briefly on display
+float lastSpeed  = 0;
+byte  lastSats   = 0;
+bool  holdHandled      = false;
+unsigned long newSessionFlash = 0;
+
+QueuedPost postQueue[QUEUE_MAX];
+int queueHead  = 0;
+int queueCount = 0;
 
 void rx() { rxFlag = true; }
+
+// --- Session management ---
 
 void incrementSession() {
   prefs.begin("telemetry", false);
@@ -80,10 +101,55 @@ void incrementSession() {
   Serial.println("Session incremented to: " + sessionId);
 }
 
+// --- Post queue ---
+
+void enqueue(const char* endpoint, const String& json) {
+  if (queueCount >= QUEUE_MAX) {
+    // Buffer full — drop oldest to make room for newest
+    queueHead = (queueHead + 1) % QUEUE_MAX;
+    queueCount--;
+  }
+  int idx = (queueHead + queueCount) % QUEUE_MAX;
+  strncpy(postQueue[idx].endpoint, endpoint, sizeof(postQueue[idx].endpoint) - 1);
+  strncpy(postQueue[idx].json,     json.c_str(), JSON_MAX - 1);
+  queueCount++;
+}
+
+// Flush one entry per call — keeps LoRa receive responsive
+void flushOne() {
+  if (queueCount == 0 || WiFi.status() != WL_CONNECTED) return;
+
+  QueuedPost& rec = postQueue[queueHead];
+  const char* url = strcmp(rec.endpoint, "TEL") == 0 ? API_TELEMETRY : API_WEATHER;
+
+  HTTPClient http;
+  http.begin(url);
+  http.addHeader("Content-Type", "application/json");
+  int code = http.POST(rec.json);
+  http.end();
+
+  if (code > 0) {
+    queueHead = (queueHead + 1) % QUEUE_MAX;
+    queueCount--;
+  }
+  // If POST failed, leave in queue and retry next loop
+}
+
+// --- WiFi watchdog ---
+
+void checkWifi() {
+  if (WiFi.status() == WL_CONNECTED) return;
+  if (millis() - lastReconnectAt < RECONNECT_INTERVAL_MS) return;
+  lastReconnectAt = millis();
+  Serial.println("WiFi lost — reconnecting...");
+  WiFi.reconnect();
+}
+
+// --- Setup ---
+
 void setup() {
   heltec_setup();
 
-  // Load persisted session number
   prefs.begin("telemetry", true);
   int num = prefs.getInt("session_num", 1);
   prefs.end();
@@ -94,7 +160,6 @@ void setup() {
   both.println("BASE STATION");
   both.println("Session: " + sessionId);
 
-  // Initialize LoRa in receive mode
   RADIOLIB_OR_HALT(radio.begin());
   radio.setDio1Action(rx);
   RADIOLIB_OR_HALT(radio.setFrequency(FREQUENCY));
@@ -103,7 +168,6 @@ void setup() {
   RADIOLIB_OR_HALT(radio.setOutputPower(TRANSMIT_POWER));
   RADIOLIB_OR_HALT(radio.startReceive(RADIOLIB_SX126X_RX_TIMEOUT_INF));
 
-  // Initialize weather sensors
   dht.begin();
   Wire.begin(41, 42);
   if (!bmp.begin_I2C()) {
@@ -114,7 +178,6 @@ void setup() {
     bmp.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
   }
 
-  // Connect WiFi
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   both.print("Connecting WiFi");
   while (WiFi.status() != WL_CONNECTED) {
@@ -125,6 +188,8 @@ void setup() {
 
   updateDisplay();
 }
+
+// --- Loop ---
 
 void loop() {
   heltec_loop();
@@ -140,6 +205,12 @@ void loop() {
     holdHandled = false;
   }
 
+  // WiFi watchdog — non-blocking reconnect attempt every 10s
+  checkWifi();
+
+  // Flush one queued post per loop cycle
+  flushOne();
+
   // Handle incoming LoRa telemetry
   if (rxFlag) {
     rxFlag = false;
@@ -148,7 +219,6 @@ void loop() {
     Serial.print("RX status: "); Serial.println(state);
     Serial.print("RX data: ["); Serial.print(rxdata); Serial.println("]");
 
-    // Trim any garbage bytes before "TEL:"
     int telIdx = rxdata.indexOf("TEL:");
     if (telIdx > 0) rxdata = rxdata.substring(telIdx);
 
@@ -159,89 +229,66 @@ void loop() {
     RADIOLIB_OR_HALT(radio.startReceive(RADIOLIB_SX126X_RX_TIMEOUT_INF));
   }
 
-  // Post weather on interval
+  // Queue weather on interval
   if (millis() - lastWeatherPost >= WEATHER_INTERVAL_MS) {
     lastWeatherPost = millis();
-    postWeather();
+    queueWeather();
   }
 }
 
-// Parse TEL packet and POST to cloud
+// --- Telemetry ---
+
 // Format: TEL:{session}:{lat}:{lon}:{speed_kph}:{heading}:{sats}:{millis}
 void handleTelemetry(const String& packet) {
-  // Split on ':'
-  int fields[8];
-  int idx = 0;
-  int start = 4; // skip "TEL:"
-
   String parts[8];
-  int partIdx = 0;
-  for (int i = 4; i <= packet.length() && partIdx < 8; i++) {
-    if (i == packet.length() || packet[i] == ':') {
+  int partIdx = 0, start = 4;
+  for (int i = 4; i <= (int)packet.length() && partIdx < 8; i++) {
+    if (i == (int)packet.length() || packet[i] == ':') {
       parts[partIdx++] = packet.substring(start, i);
       start = i + 1;
     }
   }
+  if (partIdx < 7) return;
 
-  if (partIdx < 7) return; // malformed
-
-  String session = parts[0];
-  String lat     = parts[1];
-  String lon     = parts[2];
-  String speed   = parts[3];
-  String heading = parts[4];
-  String sats    = parts[5];
-  String ms      = parts[6];
-
-  lastSpeed = speed.toFloat() * 0.621371;
-  lastSats  = sats.toInt();
-
+  lastSpeed = parts[3].toFloat() * 0.621371;
+  lastSats  = parts[5].toInt();
   updateDisplay();
 
-  if (WiFi.status() != WL_CONNECTED) return;
-
-  HTTPClient http;
-  http.begin(API_TELEMETRY);
-  http.addHeader("Content-Type", "application/json");
-
   StaticJsonDocument<256> doc;
-  doc["session_id"] = sessionId;  // base station owns the session ID
-  doc["lat"]        = lat.toFloat();
-  doc["lon"]        = lon.toFloat();
-  doc["speed_kph"]  = speed.toFloat();
-  doc["heading"]    = heading.toInt();
-  doc["satellites"] = sats.toInt();
-  doc["sequence"]   = ms.toInt();
+  doc["session_id"] = sessionId;
+  doc["lat"]        = parts[1].toFloat();
+  doc["lon"]        = parts[2].toFloat();
+  doc["speed_kph"]  = parts[3].toFloat();
+  doc["heading"]    = parts[4].toInt();
+  doc["satellites"] = parts[5].toInt();
+  doc["sequence"]   = parts[6].toInt();
 
   String body;
   serializeJson(doc, body);
-  http.POST(body);
-  http.end();
+  enqueue("TEL", body);
 }
 
-void postWeather() {
+// --- Weather ---
+
+void queueWeather() {
   float temp     = dht.readTemperature();
   float humidity = dht.readHumidity();
   float pressure = bmp.performReading() ? bmp.pressure / 100.0 : 0;
 
   if (isnan(temp) || isnan(humidity)) return;
-  if (WiFi.status() != WL_CONNECTED) return;
-
-  HTTPClient http;
-  http.begin(API_WEATHER);
-  http.addHeader("Content-Type", "application/json");
 
   StaticJsonDocument<200> doc;
-  doc["session_id"]    = sessionId;
-  doc["temp_c"]        = temp;
-  doc["humidity_pct"]  = humidity;
-  doc["pressure_hpa"]  = pressure;
+  doc["session_id"]   = sessionId;
+  doc["temp_c"]       = temp;
+  doc["humidity_pct"] = humidity;
+  doc["pressure_hpa"] = pressure;
 
   String body;
   serializeJson(doc, body);
-  http.POST(body);
-  http.end();
+  enqueue("WX", body);
 }
+
+// --- Display ---
 
 void updateDisplay() {
   display.clear();
@@ -261,7 +308,10 @@ void updateDisplay() {
     display.drawString(0, 36, "Temp: " + String(temp, 1) + "C  Hum: " + String(hum, 0) + "%");
   }
 
-  String wifiStatus = WiFi.status() == WL_CONNECTED ? "WiFi OK" : "No WiFi";
-  display.drawString(0, 50, wifiStatus);
+  bool wifiUp = WiFi.status() == WL_CONNECTED;
+  String wifiLine = wifiUp
+    ? "WiFi OK  Q:" + String(queueCount)
+    : "WiFi reconnecting...";
+  display.drawString(0, 50, wifiLine);
   display.display();
 }
