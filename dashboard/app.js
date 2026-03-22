@@ -1,7 +1,7 @@
 // Race Telemetry Dashboard
 // Update WEBSOCKET_URL after terraform apply (from outputs: websocket_endpoint)
 
-const WEBSOCKET_URL = 'wss://REPLACE_ME.execute-api.us-west-2.amazonaws.com/prod';
+const WEBSOCKET_URL = 'wss://lk95mc2bo4.execute-api.us-west-2.amazonaws.com/prod';
 
 // --- Map setup ---
 const map = L.map('map').setView([36.0, -96.0], 4);
