@@ -36,8 +36,8 @@ _Goal: live car position on Leaflet map from pit laptop over mobile hotspot_
 
 ### Dashboard
 - [x] Update `WEBSOCKET_URL` in `dashboard/app.js` with Terraform output
-- [ ] Deploy dashboard: `aws s3 sync dashboard/ s3://race-telemetry-dashboard --profile terraform`
-- [ ] Verify dashboard URL loads and shows "Connected"
+- [x] Deploy dashboard: `aws s3 sync dashboard/ s3://race-telemetry-dashboard --profile terraform`
+- [x] Verify dashboard URL loads and shows "Connected"
 - [ ] Test: car marker appears and moves on map during drive test with GPS fix
 
 ### Tracks
