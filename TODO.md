@@ -18,7 +18,7 @@
 _Goal: live car position on Leaflet map from pit laptop over mobile hotspot_
 
 ### Hardware
-- [ ] Order car unit components (Heltec LoRa 32 V3 + u-blox NEO-M8N GPS + LiPo + enclosure)
+- [ ] Order car unit components (Heltec Wireless Tracker + GNSS antenna + LiPo + enclosure)
 - [ ] Order base station components (Heltec LoRa 32 V3 + DHT22 + BMP388 + enclosure)
 - [ ] Wire and bench test car unit (GPS fix, LoRa TX visible on another board's Serial Monitor)
 - [ ] Wire and bench test base station (LoRa RX, weather sensor readings, WiFi connect)
@@ -53,6 +53,7 @@ _Goal: lap timing, session history on dashboard, data scientist self-service_
 - [ ] `telemetry-query` Lambda: `GET /telemetry?session_id=X` returns last N points — dashboard calls on load to show history trail
 - [ ] Lap timing: record start/finish GPS coords at PIR on-site (see TRACKS.md), then detect line crossing to calculate lap time. Cross-reference against official Lucky Dog times to validate accuracy. Store in new `lap-times` DynamoDB table
 - [ ] Dashboard: display current lap time + best lap
+- [ ] Predictive lap delta: compare current position progress vs. reference lap (best lap) in real time. Requires: best lap GPS+timestamp trace stored on-device, per-point time interpolation, delta output to external display. The Wireless Tracker TFT is too small to read at speed — needs a dedicated external display (e.g. large 7-segment or small ruggedized LCD mounted on dash). Green = ahead, red = behind.
 - [ ] Session end endpoint: `POST /session/end` triggers S3 CSV export of session data
 - [ ] S3 export Lambda: dump `telemetry-runs` session to `s3://race-telemetry-data/sessions/{session_id}/telemetry.csv`
 - [ ] Update `data-analyst` IAM role with S3 read access to exports bucket
@@ -61,15 +62,30 @@ _Goal: lap timing, session history on dashboard, data scientist self-service_
 
 ---
 
-## Phase 3 — Driver Inputs
-_Goal: live throttle/brake/steering traces on dashboard_
+## Phase 3 — Vehicle Data Integration (CAN Bus)
+_Goal: live throttle/brake/RPM/wheel speed traces on dashboard — no analog wiring_
 
-- [ ] Research throttle position sensor tap on the car (consult with driver)
-- [ ] Add throttle (0-3.3V analog), brake pressure transducer (0.5-4.5V), steering angle sensor to car unit wiring
-- [ ] Extend TEL message: `...:{throttle_pct}:{brake_pct}:{steering_deg}:{millis}`
-- [ ] Update `telemetry-ingest` Lambda to store new fields (no schema change needed in DynamoDB)
+Two paths depending on the car. Both use an MCP2515 CAN transceiver on the ESP32-S3 SPI bus (shares bus with LoRa, different CS pin). Zero backend changes — same TEL payload structure, same Lambda, same DynamoDB schema.
+
+**Path A — OBD2 (modern stock ECU cars, 2008+ CAN-mandated)**
+- [ ] Add MCP2515 to car unit hardware (SPI, ~$5, powered from Vext)
+- [ ] Read OBD2 Mode 1 PIDs: vehicle speed (0x0D), RPM (0x0C), throttle (0x11), engine load (0x04), brake switch
+- [ ] Extend TEL message: `...:{throttle_pct}:{brake_pct}:{rpm}:{gear}:{millis}`
+- [ ] Update `telemetry-ingest` Lambda to store new fields
+
+**Path B — Aftermarket ECU (race cars on Haltech, MoTeC, AEM, Link, Megasquirt, Ecumaster, etc.)**
+- [ ] Add MCP2515 to car unit hardware (same as Path A)
+- [ ] Implement configurable CAN ID mapping layer in firmware: define which CAN ID + byte offset maps to which telemetry field — makes it ECU-agnostic across the field
+- [ ] Target data: wheel speeds x4, RPM, throttle, gear, oil pressure/temp, fuel pressure, lambda/AFR, boost (where available)
+- [ ] Extend TEL message with vehicle data fields (same Lambda/DynamoDB update as Path A)
+- [ ] Document CAN config format in HARDWARE.md with examples for common ECUs
+
+**Shared**
 - [ ] Dashboard: add Chart.js throttle + brake trace panels (time on X axis)
+- [ ] Dashboard: add RPM bar and gear indicator to live panel
 - [ ] Update HARDWARE.md and ARCHITECTURE.md
+
+> **Note on true ADR (wheel tick → GPS Kalman filter):** Requires swapping the UC6580 for a u-blox ZED-F9R (~$200 + custom carrier board). The UC6580 doesn't support `UBX-ESF-MEAS`. Deferred to Future — see issue #4.
 
 ---
 
@@ -81,6 +97,14 @@ _Goal: tire temp + suspension data for setup optimization_
 - [ ] Determine if second ESP32 is needed on car (Heltec runs out of ADC pins with 4+4 sensors)
 - [ ] Design second ESP32 → primary car unit serial/I2C bridge if needed
 - [ ] Add setup logging: driver enters toe/camber/damper settings before session, stored with session metadata
+
+---
+
+## Future — In-Car Driver Aids
+_Wishlist features for situational awareness and driver feedback_
+
+- [ ] External lap delta display: dedicated dash-mounted display for +/- lap delta. Needs to be large/bright enough to read at speed with helmet on. Options to evaluate: large 7-segment module, small ruggedized LCD, or LED bar (simpler — just ahead/behind/neutral). Driven by serial output from Wireless Tracker.
+- [ ] Blind spot / proximity warning: ultrasonic sensors (HC-SR04 or similar) mounted in rear quarter panels to detect cars alongside. Drive a set of indicator LEDs (left side / right side) visible in the driver's peripheral vision — compensates for limited mirror visibility and restricted head movement with HANS device. Needs evaluation of sensor range and false-positive rate at racing speeds before committing to hardware.
 
 ---
 

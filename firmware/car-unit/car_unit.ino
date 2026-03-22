@@ -1,81 +1,95 @@
 /*
  * Race Telemetry - CAR UNIT
- * Heltec LoRa 32 V3 (ESP32) + u-blox NEO-M8N GPS
+ * Heltec Wireless Tracker (HTIT-Tracker) — ESP32-S3, SX1262, UC6580 GNSS
  *
- * Reads GPS at 5Hz and broadcasts telemetry over LoRa.
- * No WiFi needed — base station handles cloud upload.
+ * Board: "Heltec Wireless Tracker"
+ * Board manager URL: https://resource.heltec.cn/download/package_heltec_esp32_index.json
  *
  * Libraries required:
- *   - heltec_unofficial (LoRa + OLED)
- *   - SparkFun u-blox GNSS Arduino Library
- *
- * Hardware wiring (GPS to Heltec LoRa 32 V3):
- *   GPS TX  -> ESP32 GPIO 45 (RX1)
- *   GPS RX  -> ESP32 GPIO 46 (TX1)
- *   GPS VCC -> 3.3V
- *   GPS GND -> GND
- *
- * See CONFIG.md for session ID configuration.
+ *   - RadioLib
+ *   - TinyGPSPlus
+ *   - Heltec_ESP32_Dev-Boards  (provides HT_st7735)
  */
 
-#include <heltec_unofficial.h>
-#include <SparkFun_u-blox_GNSS_Arduino_Library.h>
+#include <RadioLib.h>
+#include "HT_TinyGPS++.h"
 #include <HardwareSerial.h>
+#include <SPI.h>
+#include "HT_st7735.h"
 
-// --- Configuration ---
-#define SESSION_ID "S001"         // Change before each session
+// --- Session ID ---
+#define SESSION_ID "S001"
 
-// LoRa settings (must match base station)
+// --- LoRa settings (must match base station) ---
 #define FREQUENCY        905.2
 #define BANDWIDTH        125.0
 #define SPREADING_FACTOR 7
+#define CODING_RATE      5
 #define TRANSMIT_POWER   14
 
-// GPS serial port
-#define GPS_SERIAL_PORT  Serial1
-#define GPS_RX_PIN       45
-#define GPS_TX_PIN       46
-#define GPS_BAUD         38400
+// --- SX1262 pins ---
+#define LORA_CS    8
+#define LORA_DIO1  14
+#define LORA_RST   12
+#define LORA_BUSY  13
+#define LORA_SCK   9
+#define LORA_MISO  11
+#define LORA_MOSI  10
 
-// Transmit interval (ms) — 200ms = 5Hz
-#define TX_INTERVAL_MS   200
+// --- UC6580 GNSS pins ---
+#define GNSS_RX_PIN   33
+#define GNSS_TX_PIN   34
+#define GNSS_BAUD   9600
 
-// --- Globals ---
-SFE_UBLOX_GNSS gps;
+#define TX_INTERVAL_MS 1000
+
+// TFT display — HT_st7735 uses default pins from HT_st7735.h:
+//   CS=38, RST=39, DC=40, SCLK=41, MOSI=42, LED_K=21 (active LOW), VTFT=3
+HT_st7735 tft;
+
+SX1262 radio = new Module(LORA_CS, LORA_DIO1, LORA_RST, LORA_BUSY);
+TinyGPSPlus gps;
+HardwareSerial gnssSerial(1);
+
 unsigned long lastTx = 0;
+int txCount = 0;
+unsigned long gnssBytes = 0;
 
 void setup() {
-  heltec_setup();
-  both.println("CAR UNIT");
-  both.println("Starting up...");
+  Serial.begin(115200);
 
-  // Initialize LoRa (TX only, no receive)
-  RADIOLIB_OR_HALT(radio.begin());
-  RADIOLIB_OR_HALT(radio.setFrequency(FREQUENCY));
-  RADIOLIB_OR_HALT(radio.setBandwidth(BANDWIDTH));
-  RADIOLIB_OR_HALT(radio.setSpreadingFactor(SPREADING_FACTOR));
-  RADIOLIB_OR_HALT(radio.setOutputPower(TRANSMIT_POWER));
+  // Display
+  tft.st7735_init();
+  tft.st7735_fill_screen(ST7735_BLACK);
+  tft.st7735_write_str(0, 10, "CAR UNIT", Font_11x18, ST7735_CYAN, ST7735_BLACK);
+  tft.st7735_write_str(0, 30, String(SESSION_ID), Font_11x18, ST7735_WHITE, ST7735_BLACK);
+  tft.st7735_write_str(0, 50, "Waiting fix...", Font_7x10, ST7735_YELLOW, ST7735_BLACK);
 
-  // Initialize GPS
-  GPS_SERIAL_PORT.begin(GPS_BAUD, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
+  // GNSS
+  gnssSerial.begin(GNSS_BAUD, SERIAL_8N1, GNSS_RX_PIN, GNSS_TX_PIN);
 
-  if (!gps.begin(GPS_SERIAL_PORT)) {
-    both.println("GPS not detected!");
-    // Continue — will show 0 satellites until fix
+  // LoRa
+  SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_CS);
+  int state = radio.begin(FREQUENCY, BANDWIDTH, SPREADING_FACTOR,
+                           CODING_RATE, RADIOLIB_SX126X_SYNC_WORD_PRIVATE,
+                           TRANSMIT_POWER);
+  if (state != RADIOLIB_ERR_NONE) {
+    tft.st7735_fill_screen(ST7735_BLACK);
+    tft.st7735_write_str(0, 10, "LoRa FAIL", Font_11x18, ST7735_RED, ST7735_BLACK);
+    tft.st7735_write_str(0, 30, String(state), Font_11x18, ST7735_RED, ST7735_BLACK);
+    Serial.println("LoRa init failed: " + String(state));
+    while (true);
   }
+  radio.setDio2AsRfSwitch(true);
 
-  gps.setNavigationFrequency(5);  // 5Hz updates
-
-  display.clear();
-  display.setFont(ArialMT_Plain_16);
-  display.drawString(0, 0, "CAR UNIT");
-  display.drawString(0, 20, "Session: " + String(SESSION_ID));
-  display.display();
+  Serial.println("CAR UNIT ready. Session: " + String(SESSION_ID));
 }
 
 void loop() {
-  heltec_loop();
-  gps.checkUblox();
+  while (gnssSerial.available()) {
+    gps.encode(gnssSerial.read());
+    gnssBytes++;
+  }
 
   if (millis() - lastTx >= TX_INTERVAL_MS) {
     lastTx = millis();
@@ -84,36 +98,57 @@ void loop() {
 }
 
 void transmitTelemetry() {
-  long lat = gps.getLatitude();    // degrees * 1e-7
-  long lon = gps.getLongitude();   // degrees * 1e-7
-  long speed = gps.getSpeedKmph(); // mm/s → kph via library
-  long heading = gps.getHeading(); // degrees * 1e-5
-  byte sats = gps.getSIV();        // satellites in view
+  double lat      = gps.location.isValid() ? gps.location.lat()            : 0.0;
+  double lon      = gps.location.isValid() ? gps.location.lng()            : 0.0;
+  double speedKph = gps.speed.isValid()    ? gps.speed.kmph()              : 0.0;
+  int    heading  = gps.course.isValid()   ? (int)gps.course.deg()         : 0;
+  int    sats     = gps.satellites.isValid() ? (int)gps.satellites.value() : 0;
+  float  speedMph = speedKph * 0.621371;
 
-  // Format: TEL:{session}:{lat}:{lon}:{speed_kph}:{heading}:{sats}:{millis}
-  // Lat/lon stored as integer degrees * 1e-7, divide for 7 decimal places
   char packet[80];
   snprintf(packet, sizeof(packet),
     "TEL:%s:%.7f:%.7f:%.1f:%d:%d:%lu",
-    SESSION_ID,
-    lat / 10000000.0,
-    lon / 10000000.0,
-    speed / 1000.0,    // mm/s to kph
-    (int)(heading / 100000),
-    sats,
-    millis()
+    SESSION_ID, lat, lon, speedKph, heading, sats, millis()
   );
 
-  radio.transmit(packet);
+  int state = radio.transmit(packet);
+  txCount++;
 
-  // Update OLED every transmit
-  display.clear();
-  display.setFont(ArialMT_Plain_10);
-  display.drawString(0, 0, String(SESSION_ID) + "  Sats:" + String(sats));
-  display.setFont(ArialMT_Plain_16);
-  display.drawString(0, 14, String(speed / 1000.0, 0) + " kph");
-  display.setFont(ArialMT_Plain_10);
-  display.drawString(0, 36, String(lat / 10000000.0, 6));
-  display.drawString(0, 48, String(lon / 10000000.0, 6));
-  display.display();
+  updateDisplay(speedMph, sats, lat, lon, state == RADIOLIB_ERR_NONE);
+
+  Serial.println("TX: " + String(packet) +
+                 "  (" + String(speedMph, 0) + " mph, " + String(sats) + " sats)");
+}
+
+void updateDisplay(float speedMph, int sats, double lat, double lon, bool txOk) {
+  // One-time clear to wipe boot screen, then overwrite in place each update.
+  static bool cleared = false;
+  if (!cleared) { tft.st7735_fill_screen(ST7735_BLACK); cleared = true; }
+
+  char buf[24];
+
+  // Row 1: sats (left) + tx count (right) — 7x10 font
+  snprintf(buf, sizeof(buf), "SAT:%-2d", sats);
+  tft.st7735_write_str(0, 2, buf, Font_7x10,
+                        sats > 0 ? ST7735_GREEN : ST7735_YELLOW, ST7735_BLACK);
+  snprintf(buf, sizeof(buf), "TX:%-4d", txCount);
+  tft.st7735_write_str(90, 2, buf, Font_7x10,
+                        txOk ? ST7735_GREEN : ST7735_RED, ST7735_BLACK);
+
+  // Row 2: speed — fixed 7-char field ("  0 mph" to "160 mph")
+  snprintf(buf, sizeof(buf), "%3d mph", (int)speedMph);
+  tft.st7735_write_str(0, 16, buf, Font_16x26, ST7735_WHITE, ST7735_BLACK);
+
+  // Rows 3-4: coords once fixed, otherwise show GNSS byte counter
+  if (sats > 0) {
+    snprintf(buf, sizeof(buf), "% 9.5f", lat);
+    tft.st7735_write_str(0, 50, buf, Font_7x10, ST7735_CYAN, ST7735_BLACK);
+    snprintf(buf, sizeof(buf), "% 10.5f", lon);
+    tft.st7735_write_str(0, 62, buf, Font_7x10, ST7735_CYAN, ST7735_BLACK);
+  } else {
+    snprintf(buf, sizeof(buf), "rx:%-7lu", gnssBytes);
+    tft.st7735_write_str(0, 50, buf, Font_7x10,
+                          gnssBytes > 0 ? ST7735_YELLOW : ST7735_RED, ST7735_BLACK);
+    tft.st7735_write_str(0, 62, "searching...  ", Font_7x10, ST7735_YELLOW, ST7735_BLACK);
+  }
 }

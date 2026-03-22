@@ -40,7 +40,7 @@ resource "aws_dynamodb_table" "weather_readings" {
 }
 
 resource "aws_dynamodb_table" "websocket_connections" {
-  name         = "websocket-connections"
+  name         = "rt-websocket-connections"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "connectionId"
 

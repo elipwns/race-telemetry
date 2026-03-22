@@ -50,7 +50,7 @@ resource "aws_lambda_function" "weather_ingest" {
 }
 
 resource "aws_lambda_function" "websocket_connect" {
-  function_name    = "websocket-connect"
+  function_name    = "rt-websocket-connect"
   role             = aws_iam_role.websocket_connect.arn
   runtime          = "python3.12"
   handler          = "lambda_function.lambda_handler"
@@ -59,7 +59,7 @@ resource "aws_lambda_function" "websocket_connect" {
 }
 
 resource "aws_lambda_function" "websocket_disconnect" {
-  function_name    = "websocket-disconnect"
+  function_name    = "rt-websocket-disconnect"
   role             = aws_iam_role.websocket_disconnect.arn
   runtime          = "python3.12"
   handler          = "lambda_function.lambda_handler"
@@ -68,7 +68,7 @@ resource "aws_lambda_function" "websocket_disconnect" {
 }
 
 resource "aws_lambda_function" "websocket_broadcast" {
-  function_name    = "websocket-broadcast"
+  function_name    = "rt-websocket-broadcast"
   role             = aws_iam_role.websocket_broadcast.arn
   runtime          = "python3.12"
   handler          = "lambda_function.lambda_handler"
