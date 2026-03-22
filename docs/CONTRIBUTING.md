@@ -1,29 +1,5 @@
 # Contributing
 
-## Team
-
-- Lead dev: infrastructure, firmware, AWS
-- Data scientist: analysis, Phase 2 data pipeline
-- Developer: dashboard, features
-
-## Branch Naming
-
-```
-feature/short-description
-fix/short-description
-```
-
-Work on a branch, open a PR to `main`. One approval required to merge.
-
-## Commit Style
-
-Short imperative subject line, 72 chars max:
-```
-add throttle sensor support to car unit
-fix GPS serial port initialization
-update dashboard WebSocket reconnect logic
-```
-
 ## AWS Infrastructure Changes
 
 All infrastructure changes must go through Terraform — never click-ops in the console.
@@ -57,4 +33,4 @@ After merging Lambda code changes, run `terraform apply` to redeploy (Terraform 
 
 ## Phase Roadmap
 
-See README.md for the phased roadmap. Open a GitHub issue to discuss any Phase 2+ work before starting implementation.
+See `TODO.md` for current priorities. Open a GitHub issue to discuss any Phase 2+ work before starting implementation.
