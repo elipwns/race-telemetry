@@ -18,7 +18,7 @@
 _Goal: live car position on Leaflet map from pit laptop over mobile hotspot_
 
 ### Hardware
-- [ ] Order car unit components (Heltec LoRa 32 V3 + u-blox NEO-M8N GPS + LiPo + enclosure)
+- [ ] Order car unit components (Heltec Wireless Tracker + GNSS antenna + LiPo + enclosure)
 - [ ] Order base station components (Heltec LoRa 32 V3 + DHT22 + BMP388 + enclosure)
 - [ ] Wire and bench test car unit (GPS fix, LoRa TX visible on another board's Serial Monitor)
 - [ ] Wire and bench test base station (LoRa RX, weather sensor readings, WiFi connect)
@@ -53,6 +53,7 @@ _Goal: lap timing, session history on dashboard, data scientist self-service_
 - [ ] `telemetry-query` Lambda: `GET /telemetry?session_id=X` returns last N points — dashboard calls on load to show history trail
 - [ ] Lap timing: record start/finish GPS coords at PIR on-site (see TRACKS.md), then detect line crossing to calculate lap time. Cross-reference against official Lucky Dog times to validate accuracy. Store in new `lap-times` DynamoDB table
 - [ ] Dashboard: display current lap time + best lap
+- [ ] Predictive lap delta: compare current position progress vs. reference lap (best lap) in real time, display +/- delta on the Wireless Tracker TFT display in the car. Reference: VBOX Motorsport does this as a paid product — this is the core "am I ahead of my best lap right now" feature. Requires: best lap GPS+timestamp trace stored on-device, per-point time interpolation, delta rendered on TFT.
 - [ ] Session end endpoint: `POST /session/end` triggers S3 CSV export of session data
 - [ ] S3 export Lambda: dump `telemetry-runs` session to `s3://race-telemetry-data/sessions/{session_id}/telemetry.csv`
 - [ ] Update `data-analyst` IAM role with S3 read access to exports bucket
