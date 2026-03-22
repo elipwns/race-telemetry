@@ -3,12 +3,12 @@
 ## Current Focus
 > Phase 1 MVP — target: Lucky Dog Race #2 (~3 months out from 2026-03-21)
 
-**Next up:**
-- [ ] Order hardware (see HARDWARE.md BOM) — get a POC on the road ASAP
-- [ ] Wire and bench test car unit + base station
-- [ ] Terraform apply + confirm all AWS resources come up clean
+**Remaining blockers before first real drive test:**
+- [ ] Connect external IPEX GNSS antenna to Wireless Tracker — confirmed NMEA bytes flowing, no fix without it
+- [ ] Deploy dashboard: `aws s3 sync dashboard/ s3://race-telemetry-dashboard --profile terraform`
+- [ ] Verify dashboard loads, WebSocket connects, car marker moves with live GPS data
 - [ ] Get Ryan's email → create AWS console login for his IAM user (see aws-iam-management PR)
-- [ ] Bench test: POST to /telemetry via curl, verify DynamoDB row appears
+- [ ] Mount car unit in enclosure, test GPS antenna placement in car
 
 **Terraform note**: `terraform apply` stays in lead dev's hands for now. Open a PR with `.tf` changes, get it merged, then ping to trigger the apply. See CONTRIBUTING.md.
 
@@ -18,25 +18,27 @@
 _Goal: live car position on Leaflet map from pit laptop over mobile hotspot_
 
 ### Hardware
-- [ ] Order car unit components (Heltec Wireless Tracker + GNSS antenna + LiPo + enclosure)
-- [ ] Order base station components (Heltec LoRa 32 V3 + DHT22 + BMP388 + enclosure)
-- [ ] Wire and bench test car unit (GPS fix, LoRa TX visible on another board's Serial Monitor)
-- [ ] Wire and bench test base station (LoRa RX, weather sensor readings, WiFi connect)
+- [x] Order car unit components (Heltec Wireless Tracker + GNSS antenna)
+- [x] Order base station components (Heltec LoRa 32 V3)
+- [ ] Order / wire weather sensors (DHT22 + BMP388) — not yet set up
+- [x] Wire and bench test car unit (LoRa TX confirmed, GNSS receiving NMEA bytes, TFT display working)
+- [x] Wire and bench test base station (LoRa RX confirmed, WiFi connected, telemetry posting to AWS)
+- [ ] Connect external IPEX GNSS antenna → confirm GPS fix outdoors
 - [ ] Mount car unit in enclosure, test GPS antenna placement in car
 
 ### AWS Infrastructure
-- [ ] `terraform init && terraform apply` — verify no errors
-- [ ] Update hardcoded values post-apply (SNS ARN in telemetry-ingest, WebSocket endpoint in websocket-broadcast) — see CONFIG.md
-- [ ] `terraform apply` again after updating Lambda code
-- [ ] Smoke test: POST to /telemetry via curl, verify DynamoDB row appears
-- [ ] Smoke test: POST to /weather via curl, verify DynamoDB row appears
+- [x] `terraform init && terraform apply` — all resources up
+- [x] Update hardcoded values post-apply (SNS ARN in telemetry-ingest, WebSocket endpoint in websocket-broadcast)
+- [x] `terraform apply` again after updating Lambda code (no-fix filter + TTL)
+- [x] Smoke test: telemetry reaching DynamoDB confirmed (2,776 records from walk test, cleaned up)
 - [ ] Smoke test: open dashboard, verify WebSocket connects
+- [ ] Smoke test: POST to /weather via curl, verify DynamoDB row appears (once weather sensors wired)
 
 ### Dashboard
-- [ ] Update `WEBSOCKET_URL` in `dashboard/app.js` with Terraform output
+- [x] Update `WEBSOCKET_URL` in `dashboard/app.js` with Terraform output
 - [ ] Deploy dashboard: `aws s3 sync dashboard/ s3://race-telemetry-dashboard --profile terraform`
 - [ ] Verify dashboard URL loads and shows "Connected"
-- [ ] Test: car marker appears and moves on map during bench drive-test
+- [ ] Test: car marker appears and moves on map during drive test with GPS fix
 
 ### Tracks
 - [ ] Record start/finish GPS coords at first Lucky Dog event (see TRACKS.md template)
@@ -123,7 +125,7 @@ _Prerequisite: proven on our car across multiple events_
 _Small issues and improvements that don't fit a phase_
 
 - [ ] Base station firmware: weather card on dashboard shows `—` (weather not sent over WebSocket — tracked in Phase 2)
-- [ ] Car unit: no GPS fix indicator LED (OLED shows sat count but no physical LED)
+- [ ] Car unit: no GPS fix indicator LED (TFT shows sat count but no physical LED)
 
 ---
 
@@ -132,3 +134,16 @@ _Move items here when merged to main_
 
 - [x] Initial repo scaffold (firmware, Lambda, Terraform, dashboard, docs)
 - [x] GitHub repo created: github.com/elipwns/race-telemetry
+- [x] Port car unit firmware to Heltec Wireless Tracker (RadioLib, HT_TinyGPS++, HT_st7735 TFT)
+- [x] TFT display: speed (mph), sat count, TX counter, lat/lon / GNSS rx byte counter
+- [x] Fix display tearing: one-time clear, fixed-width snprintf strings overwrite in place
+- [x] Base station: WiFi credentials, API endpoints, speed in mph, RX debug logging
+- [x] Base station: trim garbage prefix bytes on incoming LoRa packets
+- [x] Base station: press-and-hold PRG button 2s → increment session ID, persists via Preferences
+- [x] Lambda telemetry-ingest: reject no-fix records (satellites == 0)
+- [x] Lambda telemetry-ingest: 90-day TTL on all records
+- [x] Prefix all WebSocket AWS resources with `rt-` to avoid naming collision with timing-system project
+- [x] DynamoDB: clean up 2,776 zero-coord records from initial walk test
+- [x] WebSocket URL updated in websocket-broadcast Lambda and dashboard/app.js
+- [x] Terraform apply: all infrastructure deployed
+- [x] Phase 3 roadmap: reworked around CAN bus (OBD2 + aftermarket ECU paths)
