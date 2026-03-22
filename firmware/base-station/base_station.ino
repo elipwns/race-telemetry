@@ -103,9 +103,12 @@ void loop() {
   // Handle incoming LoRa telemetry
   if (rxFlag) {
     rxFlag = false;
-    radio.readData(rxdata);
+    int state = radio.readData(rxdata);
 
-    if (_radiolib_status == RADIOLIB_ERR_NONE && rxdata.startsWith("TEL:")) {
+    Serial.print("RX status: "); Serial.println(state);
+    Serial.print("RX data: ["); Serial.print(rxdata); Serial.println("]");
+
+    if (state == RADIOLIB_ERR_NONE && rxdata.startsWith("TEL:")) {
       handleTelemetry(rxdata);
     }
 
