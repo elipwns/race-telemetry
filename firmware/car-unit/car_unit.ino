@@ -12,7 +12,7 @@
  */
 
 #include <RadioLib.h>
-#include <TinyGPSPlus.h>
+#include "HT_TinyGPS++.h"
 #include <HardwareSerial.h>
 #include <SPI.h>
 #include "HT_st7735.h"
@@ -119,21 +119,26 @@ void transmitTelemetry() {
 }
 
 void updateDisplay(float speedMph, int sats, double lat, double lon, bool txOk) {
-  tft.st7735_fill_screen(ST7735_BLACK);
+  // No fill_screen — overwrite in place to avoid flicker/scroll tearing.
+  // Fixed-width strings ensure old characters are always covered.
 
-  // Row 1: sats + tx count
-  String satStr = "SAT:" + String(sats);
-  String txStr  = "TX:" + String(txCount);
-  tft.st7735_write_str(0,   2, satStr, Font_7x10,
+  char buf[24];
+
+  // Row 1: sats (left) + tx count (right) — 7x10 font
+  snprintf(buf, sizeof(buf), "SAT:%-2d", sats);
+  tft.st7735_write_str(0, 2, buf, Font_7x10,
                         sats > 0 ? ST7735_GREEN : ST7735_YELLOW, ST7735_BLACK);
-  tft.st7735_write_str(90,  2, txStr, Font_7x10,
+  snprintf(buf, sizeof(buf), "TX:%-4d", txCount);
+  tft.st7735_write_str(90, 2, buf, Font_7x10,
                         txOk ? ST7735_GREEN : ST7735_RED, ST7735_BLACK);
 
-  // Row 2: speed (large)
-  tft.st7735_write_str(0, 16, String((int)speedMph) + " mph", Font_16x26,
-                        ST7735_WHITE, ST7735_BLACK);
+  // Row 2: speed — fixed 7-char field ("  0 mph" to "160 mph")
+  snprintf(buf, sizeof(buf), "%3d mph", (int)speedMph);
+  tft.st7735_write_str(0, 16, buf, Font_16x26, ST7735_WHITE, ST7735_BLACK);
 
-  // Rows 3-4: coordinates
-  tft.st7735_write_str(0, 50, String(lat, 5),  Font_7x10, ST7735_CYAN, ST7735_BLACK);
-  tft.st7735_write_str(0, 62, String(lon, 5),  Font_7x10, ST7735_CYAN, ST7735_BLACK);
+  // Rows 3-4: coordinates — fixed width
+  snprintf(buf, sizeof(buf), "% 9.5f", lat);
+  tft.st7735_write_str(0, 50, buf, Font_7x10, ST7735_CYAN, ST7735_BLACK);
+  snprintf(buf, sizeof(buf), "% 10.5f", lon);
+  tft.st7735_write_str(0, 62, buf, Font_7x10, ST7735_CYAN, ST7735_BLACK);
 }
