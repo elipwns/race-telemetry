@@ -2,6 +2,19 @@
 
 This guide is for the data science team member. All telemetry and weather data is stored in DynamoDB and queryable via boto3.
 
+## Quickstart — Jupyter Notebook
+
+The fastest way to get started is the starter notebook in the repo:
+
+```bash
+git clone git@github.com:elipwns/race-telemetry.git
+cd race-telemetry
+pip install boto3 pandas matplotlib folium
+jupyter notebook notebooks/session_explorer.ipynb
+```
+
+The notebook covers: connecting to DynamoDB, loading a session into a pandas DataFrame, speed trace plots, an interactive GPS map, distance accumulation (the foundation for lap alignment), and a lap detection stub ready to fill in once S/F coords are recorded on-site.
+
 ## IAM Setup
 
 You'll need AWS credentials with access to assume the `race-telemetry-data-analyst` role. Ask the infrastructure owner for the role ARN (from Terraform output `data_analyst_role_arn`).
