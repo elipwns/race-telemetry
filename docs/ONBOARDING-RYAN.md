@@ -15,9 +15,13 @@ Full architecture and roadmap: [README.md](../README.md), [TODO.md](../TODO.md).
 ## AWS Access
 
 **Account ID**: 772255980793
+
 **Console URL**: https://772255980793.signin.aws.amazon.com/console
+
 **Username**: `ryan-francis`
+
 **Temp password**: shared via secure channel — you'll be prompted to reset on first login
+
 **Region**: us-west-2 (Oregon)
 
 Your user can assume the `race-telemetry-data-analyst` role, which has read-only access to:
