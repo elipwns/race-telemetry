@@ -156,6 +156,34 @@ LiPo remains an option for bench testing and non-race environments where tempera
 
 Avoid PLA (deforms at 60°C) and standard PETG as the final race car material.
 
+### Mounting
+
+The back face of the enclosure carries all mounting features. The goal is to cover the most common install scenarios without making the box complicated — most features are zero-cost print geometry.
+
+**Built into the enclosure (standard features):**
+
+| Feature | Detail | Use case |
+|---|---|---|
+| Zip tie channels | Recessed slots around the perimeter, or D-ring posts on the back | Roll cage tubes, dash edges, wiring looms — anything you can loop a zip tie around |
+| Countersunk bolt holes | 4× M3 holes in the corners of the back face, flush-mount hardware | Screwing to any flat surface: dash, trans tunnel, floor, firewall |
+| Keyhole slots | 2× keyhole cutouts on the back | Screw heads into the car surface, twist-lock the box on — fast removal without tools, good for track day use moving between cars |
+
+**Separate printed bracket (bolt onto the box):**
+
+| Bracket | Detail | Use case |
+|---|---|---|
+| Roll cage tube clamp | Two-piece clamp grabs a 1.5" or 1.75" tube (standard roll cage sizes), box bolts to it via the back face M3 holes | Permanent race car install on the main hoop or dash bar |
+| Suction cup plate | Flat plate with 1–2 suction cups, box clips/slides onto it | EV test, daily driver, glass or smooth dash surface — no permanent attachment |
+
+The main enclosure is universal. Cage tube clamp sizes and suction cup variants are printed as accessories — swap per car without reprinting the box.
+
+**Design notes for CAD:**
+- Zip tie channels: 4mm wide × 3mm deep slots, one on each long side, centered. Two posts on the back also work and are stronger.
+- Countersunk holes: M3 clearance (3.4mm), 90° countersink for M3 flat-head screws. Space to match a common bracket hole pattern if possible.
+- Keyhole slots: 6mm entry, 3.5mm retention slot, 5mm travel. Works with M3 pan-head screws.
+- Back face should be flat and uninterrupted between features — the cage clamp bracket needs a clean mating surface.
+- Keep the back face as the mounting face; nothing on the bottom — enclosure should sit flat on a bench.
+
 ### Design references
 - MrDIY ESP32 CAN Shield v1.3 — good reference for aviation connector placement and board mounting standoff approach (makerworld.com/en/models/673956)
 
