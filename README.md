@@ -63,6 +63,10 @@ LoRa: 905.2 MHz · SF7 · 125 kHz BW · 14 dBm
 - **Phase 3**: Vehicle data via CAN bus (OBD2 or aftermarket ECU — throttle, brake, RPM, wheel speeds)
 - **Phase 4**: Car development sensors (tire temps, shock height)
 
+## Configurations
+
+Four hardware configurations depending on the car — from a plug-and-play OBD2 dongle for stock cars to full aftermarket ECU CAN integration. See [docs/CONFIGURATIONS.md](docs/CONFIGURATIONS.md).
+
 ## Data Access
 
 Data scientists can query DynamoDB directly via boto3. See [docs/DATA-ACCESS.md](docs/DATA-ACCESS.md).

@@ -1,0 +1,138 @@
+# System Configurations
+
+The race telemetry system is designed around four configurations depending on the car. Each builds on the same core stack (Wireless Tracker → LoRa → base station → AWS → dashboard) and differs only in how engine/vehicle data is sourced.
+
+---
+
+## Tier 1 — OBD2 Plug-and-Play
+
+**Target:** Stock or lightly modified car with an OBD2 port (US cars 1996+, CAN-based 2008+). Weekend warriors, track day drivers, anyone who wants to add telemetry with zero permanent modification.
+
+**How it works:** ELM327 UART module handles OBD2 protocol translation. You send ASCII AT commands (`010D\r` for speed, `010C\r` for RPM, etc.) and get ASCII hex back — no CAN library or protocol knowledge required. Entire unit lives in a 3D printed enclosure that plugs directly into the OBD2 port. Power comes from OBD2 pin 16 (12V unswitched) through a small buck converter. GPS antenna sticks to the windshield via suction mount.
+
+**Hardware (beyond base car unit BOM):**
+
+| Component | Part | ~Cost | Notes |
+|---|---|---|---|
+| OBD2 protocol bridge | ELM327 UART module (3.3V) | $5–10 | "ELM327 TTL" — get the 3.3V variant, no level shifting needed |
+| Power regulation | MP1584 or LM2596 buck converter module | $2 | 12V → 5V; feeds Wireless Tracker via USB-C |
+| OBD2 connector | Male OBD2 pigtail (6-inch) or printed housing | $3–5 | Wire pins 4 (GND), 5 (sig GND), 6 (CAN-H), 14 (CAN-L), 16 (12V) |
+| GPS antenna | Suction-cup active patch antenna (IPEX) | $8 | Windshield mount, short cable into enclosure |
+| Enclosure | 3D printed (see below) | — | All-in-one: OBD2 plug face + electronics cavity |
+
+**Enclosure design references:**
+- MrDIY ESP32 CAN Shield v1.3 Case — circuit layout and R/RW toggle switch approach (makerworld.com/en/models/673956)
+- OBD2 plug for DIY projects — printable OBD2 male connector housing (makerworld.com/en/models/1662389)
+
+**Key design notes:**
+- Include a R/RW toggle switch on the ELM327 TX line — physical read-only lockout prevents accidental CAN writes
+- Account for CAN transceiver dominant-state-at-boot (the ELM327 handles this internally, but worth verifying on first test)
+- GPS antenna must have sky view — suction mount on windshield, cable routed into the enclosure
+
+**Data available:** GPS position + speed, vehicle speed (OBD2 PID 0x0D), RPM (0x0C), throttle (0x11), engine load (0x04), brake switch status (where available).
+
+**Test candidate:** Any OBD2 EV or modern car — plug in, drive around the block, validate GPS trace and OBD2 speed match.
+
+---
+
+## Tier 2 — GPS Only / Self-Contained
+
+**Target:** Carbureted engine, vintage racer, anything with just 12V and a fuel tank. No ECU, no OBD2, no CAN bus. Also the fallback for any car where OBD2 integration isn't worth the effort.
+
+**How it works:** Wireless Tracker in a small weatherproof box powered from the car's 12V electrical system. GPS + LoRa only — position, speed, heading, lap timing. No engine data. Simplest possible install.
+
+**Hardware (beyond base car unit BOM):**
+
+| Component | Part | ~Cost | Notes |
+|---|---|---|---|
+| Power regulation | MP1584 buck converter module | $2 | 12V → 5V for Wireless Tracker |
+| Power connector | Ring terminals or accessory fuse tap | $2 | Tap to any switched 12V circuit |
+| GPS antenna | Active patch with magnetic base (IPEX) | $10 | Roof mount preferred |
+| Enclosure | 3D printed or IP65 ABS project box | $5–8 | Mount on dash or roll cage |
+
+**Data available:** GPS position, speed, heading, satellites. Lap timing via start/finish line crossing (Phase 2). Nothing from the engine.
+
+**Install time:** ~15 minutes. Suitable for loaner cars, rental track cars, or any situation where modifying the car's electrics isn't possible.
+
+---
+
+## Tier 3 — Analog Sensor Hybrid
+
+**Target:** Car that has *some* electronics but not full OBD2 CAN — OBD1 cars (pre-1996), heavily modified engines where stock sensors are gone, cars with a standalone dash or sensor cluster that doesn't expose CAN. Also useful when OBD2 exists but you want higher resolution data than PID polling allows.
+
+**How it works:** GPS + LoRa from Tier 2, plus direct analog/digital wiring from sensors to the Wireless Tracker's ADC pins. Sensors are tapped at the source (throttle position pot, brake pressure transducer, steering angle sensor) rather than read from a bus. More wiring effort, but completely independent of whatever ECU (or lack thereof) the car has.
+
+**Example sensors:**
+
+| Signal | Sensor | Interface | Notes |
+|---|---|---|---|
+| Throttle position | Existing TPS tap or hall sensor | 0–3.3V analog (ADC) | Most TPS output 0–5V — use voltage divider |
+| Brake pressure | 0.5–4.5V pressure transducer | 0–3.3V analog (ADC) | Tee into brake line |
+| Steering angle | Rotary hall effect sensor | 0–3.3V analog or SPI | Mounted to steering column |
+| Wheel speed | Hall effect sensor + PCNT | Digital pulse count | See issue #4 for PCNT detail |
+
+**Data available:** GPS + any sensors physically wired in. Completely custom per car.
+
+---
+
+## Tier 4 — Aftermarket ECU / Full CAN
+
+**Target:** Race car running an aftermarket ECU with a configurable CAN bus — Haltech, MoTeC, AEM, Link/Vi-PEC, Megasquirt, Ecumaster, etc. This is the richest data source and the likely configuration for the team's own car.
+
+**How it works:** MCP2515 CAN transceiver on the Wireless Tracker's SPI bus (shares hardware SPI with LoRa, different CS pin). A configurable CAN ID mapping layer in firmware defines which CAN message ID and byte offset maps to which telemetry field — ECU-agnostic, works across all major platforms by loading the right config.
+
+**Hardware (beyond base car unit BOM):**
+
+| Component | Part | ~Cost | Notes |
+|---|---|---|---|
+| CAN transceiver | MCP2515 module (SPI) | $3–5 | Shares SPI bus with LoRa (different CS pin) |
+| CAN termination | 120Ω resistor | $0.10 | Only if this node is at a bus end |
+| OBD2 or CAN connector | Deutsch DT or direct ECU harness tap | $5–10 | Depends on ECU and harness layout |
+
+**Data available (ECU-dependent):** wheel speeds x4, RPM, throttle %, gear position, oil pressure/temp, fuel pressure, lambda/AFR, boost pressure, brake pressure, steering angle — whatever the ECU is logging.
+
+**CAN config format** (firmware, Phase 3):
+```
+# Example: Haltech Elite CAN stream
+0x360: byte 0-1 = RPM (uint16, factor 1)
+0x360: byte 2-3 = TPS (uint16, factor 0.1, unit %)
+0x362: byte 0-1 = MAP (uint16, factor 0.1, unit kPa)
+```
+Document configs for common ECUs in this file as they're validated.
+
+---
+
+## Choosing a Configuration
+
+| Situation | Tier |
+|---|---|
+| Stock daily driver / EV / modern track car with OBD2 | 1 |
+| Old car, carb engine, vintage racer, rental/loaner | 2 |
+| OBD1 car, modified engine, want analog sensor data | 3 |
+| Aftermarket ECU (Haltech, MoTeC, Link, Megasquirt, etc.) | 4 |
+
+Tiers 1 and 2 can coexist — a Tier 1 setup that loses OBD2 comms falls back gracefully to GPS-only data automatically (Lambda drops no-data fields, GPS still works).
+
+---
+
+## Immediate Test Plan — EV Drive Test
+
+**Goal:** Validate end-to-end GPS pipeline. No OBD2 hardware needed yet — this is a Tier 2 test on a car that happens to be an EV.
+
+**Prerequisites:**
+- [ ] External IPEX GNSS antenna connected to Wireless Tracker
+- [ ] Base station powered, connected to mobile hotspot
+- [ ] Dashboard open on pit laptop (`http://race-telemetry-dashboard.s3-website-us-west-2.amazonaws.com`)
+
+**Steps:**
+1. Place car unit near windshield (suction or dash mount), antenna facing up with clear sky view
+2. Power on — wait for `sats > 0` on TFT display
+3. Open dashboard, confirm "Connected" status
+4. Drive a few blocks — verify car marker moves and traces the route
+5. Check speed readout roughly matches speedometer
+6. Return — confirm GPS trace looks correct on map
+
+**Phase 3 EV test (once ELM327 module arrives):**
+- Same setup + ELM327 UART wired to Wireless Tracker UART2
+- Validate OBD2 speed matches GPS speed
+- Log RPM, throttle, engine load during drive
