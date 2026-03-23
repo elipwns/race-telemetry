@@ -102,6 +102,93 @@ Document configs for common ECUs in this file as they're validated.
 
 ---
 
+## Car Unit Enclosure Design
+
+The car unit enclosure is designed to be universal — the same box works across all four tiers. What changes is what's on the other end of the cables.
+
+### Interface points
+
+**Top/front face — TFT window**
+Clear panel or open cutout exposing the Wireless Tracker's built-in TFT display. Debug and setup use only — not readable at speed. Allows status checking without opening the case.
+
+**End A — USB-C**
+Power input and firmware flashing. Aligned to the board's onboard USB-C port. This is the universal power interface — car USB port, external power bank, or a buck converter pigtail from 12V all terminate here via cable.
+
+**End B — 2× SMA bulkhead**
+LoRa and GNSS antenna connections. IPEX-to-SMA pigtails route internally from the board's U.FL connectors. Leave 15–20mm clearance inside for the pigtail arc — U.FL connectors don't tolerate sharp bends. Both external antennas (LoRa magnetic roof mount, GNSS windshield mount) plug in here via standard SMA cables.
+
+**Side/back — GX16 8-pin aviation connector**
+The vehicle harness connector. One connector, threaded locking ring, carries everything the car provides and everything the unit outputs. Weatherproof when mated. ~$3–5.
+
+| Pin | Signal | Notes |
+|-----|--------|-------|
+| 1 | 12V in | From car harness via buck converter → 5V → USB-C (or use USB-C directly and leave unpopulated) |
+| 2 | GND | |
+| 3 | Display UART TX | To external driver display (lap delta, pit signals) |
+| 4 | Display UART RX | |
+| 5 | Data UART TX | OBD2 ELM327 or future expansion |
+| 6 | Data UART RX | |
+| 7 | Spare | |
+| 8 | Spare | |
+
+The harness on the car side is bespoke per installation. The enclosure never changes.
+
+### Power
+
+**No onboard LiPo for race car use.** Dash temperatures in a race car (80–90°C+ in summer sun) combined with crash risk and vibration make LiPo in the cockpit an unacceptable risk. LiPo thermal runaway in a cockpit is not recoverable.
+
+**Power options by use case:**
+
+| Situation | Power source | What plugs into USB-C |
+|---|---|---|
+| Race car permanent install | 12V tap → buck converter → USB-C cable | Buck converter pigtail |
+| Track day / daily driver | Car USB-A or USB-C port | Standard cable |
+| Bench / EV test | External power bank | USB-C cable |
+| OBD2 Tier 1 | OBD2 pin 16 (12V) → buck converter | Buck converter pigtail |
+
+LiPo remains an option for bench testing and non-race environments where temperatures are controlled, but should be called out clearly in documentation as not suitable for race car cockpit use.
+
+### Material
+
+**ASA** for final parts — ~95–100°C HDT, UV resistant, similar print profile to ABS. Right choice for anything that might see direct sun through a windshield.
+
+**PETG for fit checks** — print the first iteration in PETG to validate board fitment, SMA hole positions, GX16 placement, USB-C alignment. Once geometry is confirmed, reprint in ASA.
+
+Avoid PLA (deforms at 60°C) and standard PETG as the final race car material.
+
+### Mounting
+
+The back face of the enclosure carries all mounting features. The goal is to cover the most common install scenarios without making the box complicated — most features are zero-cost print geometry.
+
+**Built into the enclosure (standard features):**
+
+| Feature | Detail | Use case |
+|---|---|---|
+| Zip tie channels | Recessed slots around the perimeter, or D-ring posts on the back | Roll cage tubes, dash edges, wiring looms — anything you can loop a zip tie around |
+| Countersunk bolt holes | 4× M3 holes in the corners of the back face, flush-mount hardware | Screwing to any flat surface: dash, trans tunnel, floor, firewall |
+| Keyhole slots | 2× keyhole cutouts on the back | Screw heads into the car surface, twist-lock the box on — fast removal without tools, good for track day use moving between cars |
+
+**Separate printed bracket (bolt onto the box):**
+
+| Bracket | Detail | Use case |
+|---|---|---|
+| Roll cage tube clamp | Two-piece clamp grabs a 1.5" or 1.75" tube (standard roll cage sizes), box bolts to it via the back face M3 holes | Permanent race car install on the main hoop or dash bar |
+| Suction cup plate | Flat plate with 1–2 suction cups, box clips/slides onto it | EV test, daily driver, glass or smooth dash surface — no permanent attachment |
+
+The main enclosure is universal. Cage tube clamp sizes and suction cup variants are printed as accessories — swap per car without reprinting the box.
+
+**Design notes for CAD:**
+- Zip tie channels: 4mm wide × 3mm deep slots, one on each long side, centered. Two posts on the back also work and are stronger.
+- Countersunk holes: M3 clearance (3.4mm), 90° countersink for M3 flat-head screws. Space to match a common bracket hole pattern if possible.
+- Keyhole slots: 6mm entry, 3.5mm retention slot, 5mm travel. Works with M3 pan-head screws.
+- Back face should be flat and uninterrupted between features — the cage clamp bracket needs a clean mating surface.
+- Keep the back face as the mounting face; nothing on the bottom — enclosure should sit flat on a bench.
+
+### Design references
+- MrDIY ESP32 CAN Shield v1.3 — good reference for aviation connector placement and board mounting standoff approach (makerworld.com/en/models/673956)
+
+---
+
 ## Choosing a Configuration
 
 | Situation | Tier |
