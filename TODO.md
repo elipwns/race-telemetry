@@ -7,7 +7,7 @@
 - [ ] Connect external IPEX GNSS antenna to Wireless Tracker — confirmed NMEA bytes flowing, no fix without it
 - [ ] Deploy dashboard: `aws s3 sync dashboard/ s3://race-telemetry-dashboard --profile terraform`
 - [ ] Verify dashboard loads, WebSocket connects, car marker moves with live GPS data
-- [ ] Get Ryan's email → create AWS console login for his IAM user (see aws-iam-management PR)
+- [x] Get Ryan's email → create AWS console login for his IAM user
 - [ ] Mount car unit in enclosure, test GPS antenna placement in car
 
 **Terraform note**: `terraform apply` stays in lead dev's hands for now. Open a PR with `.tf` changes, get it merged, then ping to trigger the apply. See CONTRIBUTING.md.
