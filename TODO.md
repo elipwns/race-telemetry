@@ -52,6 +52,23 @@ _Goal: live car position on Leaflet map from pit laptop over mobile hotspot_
 ## Phase 2 — Data + Analysis
 _Goal: lap timing, session history on dashboard, data scientist self-service_
 
+### Data Completeness (Local Storage + WiFi Backfill)
+- [ ] Car unit: enable LittleFS partition, write every TEL record to flash with sequence number — provides ~2.5–5 hrs of local storage at 1Hz independent of LoRa success
+- [ ] Car unit: on WiFi connect (entering pit lane near hotspot), bulk-upload session file directly to API — fills LoRa gaps automatically. DynamoDB puts are idempotent so duplicate records are harmless.
+- [ ] SD card (endurance races): add SD module on ESP32-S3's second SPI bus using free GPIO pins — effectively unlimited storage. Necessary for 7+ hour Lucky Dog endurance events where LittleFS fills up. LoRa handles real-time; SD card is the ground truth archive.
+
+### Pit-to-Car Communications
+_Goal: base station can signal the driver without anyone touching the board_
+
+- [ ] Car unit: after each TX, open 500ms LoRa RX window to listen for base station messages
+- [ ] Base station: queue outbound messages; transmit immediately upon receiving a car packet
+- [ ] Car unit: display incoming commands full-screen on TFT — `PIT IN` (red), `ALL CLEAR` (green), arbitrary text
+- [ ] Base station admin web UI: ESP32 hosts a small web server on the hotspot network. Anyone on the same network opens `http://telemetry.local` in a browser — no app install, no IP hunting. Pit crew chief can send pit signals from a phone or tablet without being near the board.
+- [ ] Admin UI actions: Pit In, All Clear, custom text field, view live car speed/last-seen
+- [ ] Physical keypad on base station: I2C membrane keypad (PCF8574 expander) for quick-action fallback when someone is already standing at the board. Maps to same message queue as web UI.
+- [ ] Base station: add LoRa TX capability (currently RX-only)
+
+### Lap Timing + History
 - [ ] `telemetry-query` Lambda: `GET /telemetry?session_id=X` returns last N points — dashboard calls on load to show history trail
 - [ ] Lap timing: record start/finish GPS coords at PIR on-site (see TRACKS.md), then detect line crossing to calculate lap time. Cross-reference against official Lucky Dog times to validate accuracy. Store in new `lap-times` DynamoDB table
 - [ ] Dashboard: display current lap time + best lap
