@@ -127,8 +127,31 @@ _Wishlist features for situational awareness and driver feedback_
 
 ---
 
+## Future — Multi-car Support
+_One base station, multiple cars, one dashboard — color-coded_
+
+A realistic near-term scenario: track day with two friends, or a race team running 2–3 cars at the same event. One base station in the pits handles all of them. One dashboard shows all cars simultaneously, each with a distinct color.
+
+**Architecture changes needed:**
+
+- **CAR_ID field**: each physical unit gets a permanent hardcoded `CAR_ID` (e.g. `"CAR1"`, `"RED"`, `"#44"`) flashed at setup time, separate from session ID. TEL packet becomes `TEL:{car_id}:{session_id}:...`. Base station relays car_id as-is to DynamoDB.
+- **DynamoDB**: add `car_id` as a stored field. No partition key change needed — `session_id` stays the partition key since a session groups all cars at an event.
+- **Dashboard**: render one marker + polyline per unique car_id seen in the session. Assign colors deterministically from car_id (e.g. hash to a palette). Speed/status panels expand to show all active cars, or tabbed by car.
+- **Pit comms**: admin UI (issue #8) lets crew chief select which car to send a message to.
+
+**LoRa collision consideration**: at SF7/125kHz each packet is ~30ms in the air. Two cars TXing at 1Hz have ~6% collision probability; three cars ~9%. Acceptable but worth monitoring. Options if it becomes a problem: stagger TX offsets at flash time, increase TX interval slightly (1.5s), or enable RadioLib CSMA (listen-before-transmit).
+
+- [ ] Add `CAR_ID` to firmware, TEL packet format, Lambda, and DynamoDB
+- [ ] Dashboard: multi-marker rendering, color assignment by car_id, per-car status panels
+- [ ] Pit comms admin UI: car selector before sending message
+- [ ] Evaluate LoRa collision rate empirically with 2–3 units; add CSMA if needed
+
+---
+
 ## Future — Multi-team Product
-_Prerequisite: proven on our car across multiple events_
+_Prerequisite: proven on our car + multi-car across multiple events_
+
+Separate teams, separate deployments, separate billing. Different concern from multi-car above.
 
 - [ ] Managed session system: `POST /session/start` returns session token (replaces manual SESSION_ID)
 - [ ] Multi-tenancy: add `team_id` prefix to DynamoDB keys
